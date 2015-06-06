@@ -8,5 +8,7 @@
     },
     "targetName" : "icontheme",
     "targetPath" : "lib", 
-    "targetType" : "library"
+    "targetType" : "library",
+    
+    "subPackages" : ["./examples/iconthemetest", "./examples/findicon", "./examples/describetheme"]
 }

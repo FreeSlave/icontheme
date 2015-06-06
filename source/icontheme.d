@@ -29,7 +29,7 @@ private
 }
 
 
-import inilike;
+public import inilike;
 
 /**
  * Adapter of IniLikeGroup for easy access to icon subdirectory properties.
@@ -389,7 +389,7 @@ if(is(Unqual!(ElementType!Range) == string))
  *  $(B IniLikeException) if error occured while reading the file.
  * See_Also: findIconTheme, baseIconDirs
  */
-@safe IconThemeFile openIconTheme(Range)(string themeName, 
+@trusted IconThemeFile openIconTheme(Range)(string themeName, 
                                          Range searchIconDirs, 
                                          IconThemeFile.ReadOptions options = IconThemeFile.ReadOptions.noOptions)
 if(is(Unqual!(ElementType!Range) == string))
