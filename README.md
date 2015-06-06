@@ -2,6 +2,8 @@
 
 D library for working with icon themes in freedesktop environments. See [Icon Theme Specification](http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html).
 
+[![Build Status](https://travis-ci.org/MyLittleRobo/icontheme.svg?branch=master)](https://travis-ci.org/MyLittleRobo/icontheme)
+
 ## Generating documentation
 
 Ddoc:
