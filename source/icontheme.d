@@ -1,3 +1,12 @@
+/**
+ * Authors: 
+ *  $(LINK2 https://github.com/MyLittleRobo, Roman Chistokhodov).
+ * License: 
+ *  $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * See_Also: 
+ *  $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html, Icon Theme Specification).
+ */
+
 module icontheme;
 
 private
@@ -64,7 +73,7 @@ struct IconSubDir
     
     /**
      * Nominal size of the icons in this directory.
-     * Returns: the value associated with "Size" key converted to an unsigned integer, or 0 if the value is not present or not a number.
+     * Returns: The value associated with "Size" key converted to an unsigned integer, or 0 if the value is not present or not a number.
      */
     @nogc @safe uint size() const nothrow {
         return parseSize(value("Size"));
@@ -72,7 +81,7 @@ struct IconSubDir
     
     /**
      * The context the icon is normally used in.
-     * Returns: the value associated with "Context" key.
+     * Returns: The value associated with "Context" key.
      */
     @nogc @safe string context() const nothrow {
         return group.value("Context");
@@ -80,7 +89,7 @@ struct IconSubDir
     
     /** 
      * The type of icon sizes for the icons in this directory.
-     * Returns: the value associated with "Type" key or if not present Type.Threshold is returned. 
+     * Returns: The value associated with "Type" key or if not present Type.Threshold is returned. 
      */
     @nogc @safe Type type() const nothrow {
         string t = group.value("Type");
@@ -97,7 +106,7 @@ struct IconSubDir
     
     /** 
      * The maximum size that the icons in this directory can be scaled to. Defaults to the value of Size if not present.
-     * Returns: the value associated with "MaxSize" key converted to an unsigned integer, or size() if the value is not present or not a number.
+     * Returns: The value associated with "MaxSize" key converted to an unsigned integer, or size() if the value is not present or not a number.
      * See_Also: size, minSize
      */
     @nogc @safe uint maxSize() const nothrow {
@@ -107,7 +116,7 @@ struct IconSubDir
     
     /** 
      * The minimum size that the icons in this directory can be scaled to. Defaults to the value of Size if not present.
-     * Returns: the value associated with "MinSize" key converted to an unsigned integer, or size() if the value is not present or not a number.
+     * Returns: The value associated with "MinSize" key converted to an unsigned integer, or size() if the value is not present or not a number.
      * See_Also: size, maxnSize
      */
     @nogc @safe uint minSize() const nothrow {
@@ -117,7 +126,7 @@ struct IconSubDir
     
     /**
      * The icons in this directory can be used if the size differ at most this much from the desired size. Defaults to 2 if not present.
-     * Returns: the value associated with "Threshold" key, or 2 if the value is not present or not a number.
+     * Returns: The value associated with "Threshold" key, or 2 if the value is not present or not a number.
      */
     @nogc @safe uint threshold() const nothrow {
         string t = group.value("Threshold");
@@ -154,7 +163,7 @@ final class IconThemeFile : IniLikeFile
      * Reads desktop file from file.
      * Throws:
      *  $(B ErrnoException) if file could not be opened.
-     *  $(B DesktopFileException) if error occured while reading the file.
+     *  $(B IniLikeException) if error occured while reading the file.
      */
     @safe this(string fileName, ReadOptions options = ReadOptions.noOptions) {
         this(iniLikeFileReader(fileName), options, fileName);
@@ -194,7 +203,7 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * Short name of the icon theme, used in e.g. lists when selecting themes.
-     * Returns: the value associated with "Name" key.
+     * Returns: The value associated with "Name" key.
      */
     @nogc @safe string name() const nothrow {
         return value("Name");
@@ -211,7 +220,7 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * Longer string describing the theme.
-     * Returns: the value associated with "Comment" key.
+     * Returns: The value associated with "Comment" key.
      */
     @nogc @safe string comment() const nothrow {
         return value("Comment");
@@ -223,7 +232,7 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * Whether to hide the theme in a theme selection user interface.
-     * Returns: the value associated with "Hidden" key converted to bool using isTrue.
+     * Returns: The value associated with "Hidden" key converted to bool using isTrue.
      */
     @nogc @safe bool hidden() const nothrow {
         return isTrue(value("Hidden"));
@@ -231,7 +240,7 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * The name of an icon that should be used as an example of how this theme looks.
-     * Returns: the value associated with "Example" key.
+     * Returns: The value associated with "Example" key.
      */
     @nogc @safe string example() const nothrow {
         return value("Example");
@@ -239,7 +248,7 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * Some keys can have multiple values, separated by comma. This function helps to parse such kind of strings into the range.
-     * Returns: the range of multiple nonempty values.
+     * Returns: The range of multiple nonempty values.
      * See_Also: joinValues
      */
     @trusted static auto splitValues(string values) {
@@ -262,7 +271,7 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * List of subdirectories for this theme.
-     * Returns: the range of multiple values associated with "Directories" key.
+     * Returns: The range of multiple values associated with "Directories" key.
      */
     @safe auto directories() const {
         return splitValues(value("Directories"));
@@ -270,7 +279,7 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * Names of the themes that this theme inherits from.
-     * Returns: the range of multiple values associated with "Inherits" key.
+     * Returns: The range of multiple values associated with "Inherits" key.
      */
     @safe auto inherits() const {
         return splitValues(value("Inherits"));
@@ -284,15 +293,16 @@ final class IconThemeFile : IniLikeFile
     }
     
     /**
-     * Returns: instance of "Icon Theme" group.
-     * Note: usually you don't need to call this function since you can rely on alias this.
+     * Icon Theme group in underlying file.
+     * Returns: Instance of "Icon Theme" group.
+     * Note: Usually you don't need to call this function since you can rely on alias this.
      */
     @nogc @safe inout(IniLikeGroup) iconTheme() nothrow inout {
         return _iconTheme;
     }
     
     /**
-     * This alias allows to call functions related to "Desktop Entry" group without need to call desktopEntry explicitly.
+     * This alias allows to call functions related to "Icon Theme" group without need to call iconTheme explicitly.
      */
     alias iconTheme this;
     
@@ -302,6 +312,7 @@ private:
 
 /**
  * The set of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification)
+ * Note: This function does not provide any caching of its results. This function does not check if directories exist.
  */
 @safe string[] baseIconDirs() nothrow
 {
@@ -330,6 +341,9 @@ private:
 
 /**
  * The range of paths to index.theme files represented icon themes.
+ * Params:
+ *  searchIconDirs = base icon directories to search icon themes.
+ * See_Also: baseIconDirs
  */
 @trusted auto iconThemePaths(Range)(Range searchIconDirs) 
 if(is(ElementType!Range == string))
@@ -350,6 +364,10 @@ if(is(ElementType!Range == string))
 
 /**
  * Find index.theme file by theme name.
+ * Params:
+ *  themeName = theme name.
+ *  searchIconDirs = base icon directories to search icon themes.
+ * See_Also: baseIconDirs
  */
 @trusted auto findIconTheme(Range)(string themeName, Range searchIconDirs) nothrow
 if(is(Unqual!(ElementType!Range) == string))
@@ -364,8 +382,12 @@ if(is(Unqual!(ElementType!Range) == string))
 }
 
 /**
- * Create instance of IconThemeFile associated with given theme.
+ * Find index.theme file for given theme and create instance of IconThemeFile. The first found file will be used.
  * Returns: IconThemeFile object corresponding to given theme or null if not found.
+ * Throws:
+ *  $(B ErrnoException) if file could not be opened.
+ *  $(B IniLikeException) if error occured while reading the file.
+ * See_Also: findIconTheme, baseIconDirs
  */
 @safe IconThemeFile openIconTheme(Range)(string themeName, 
                                          Range searchIconDirs, 
@@ -378,7 +400,18 @@ if(is(Unqual!(ElementType!Range) == string))
 
 /**
  * Lookup icon alternatives in icon themes.
- * Returns: the range of tuples of found icon file names and corresponding $(B IconSubDir)s
+ * Returns: The range of tuples of found icon file names and corresponding $(B IconSubDir)s
+ * Params:
+ *  iconName = icon name.
+ *  iconThemes = icon themes to search icon in.
+ *  searchIconDirs = base icon directories.
+ *  extensions = possible file extensions of needed icon file, in order of preference.
+ * Note: Specification says that extension must be ".png", ".xpm" or ".svg", though SVG is not required to be supported.
+ * Example:
+----------
+auto result = lookupIcon("folder", iconThemes, baseIconDirs(), [".png", ".xpm"]);
+----------
+ * See_Also: baseIconDirs, lookupFallbackIcon
  */
 @trusted auto lookupIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 if (is(Unqual!(ElementType!IconThemes) == IconThemeFile) && is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts) == string))
@@ -401,8 +434,13 @@ if (is(Unqual!(ElementType!IconThemes) == IconThemeFile) && is(Unqual!(ElementTy
 }
 
 /**
- * Lookup icon alternatives out of icon themes.
- * Returns: the range of found icon file names.
+ * Lookup icon alternatives out of icon themes. Should be used as fallback lookup, if lookupIcon returned empty range.
+ * Returns: The range of found icon file names.
+ * Example:
+----------
+auto result = lookupFallbackIcon("folder", baseIconDirs(), [".png", ".xpm"]);
+----------
+ * See_Also: baseIconDirs, lookupIcon
  */
 @trusted auto lookupFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
 if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts) == string))
@@ -420,7 +458,8 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
 }
 
 /**
- * Find the icon with best match to given size.
+ * Find the icon with best match to given size. The first perfect match is used. If could not find icon in icon themes, uses non-themed fallback.
+ * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
  */
 @safe string findIcon(IconThemes, BaseDirs, Exts)(string iconName, uint matchSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
@@ -435,7 +474,8 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
 }
 
 /**
- * Find the icon with maximum size.
+ * ditto, but find the icon with maximum size.
+ * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
  */
 @safe string findIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
@@ -457,6 +497,10 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
     return icon;
 }
 
+/**
+ * Distance between desired size and minimum or maximum size value supported by icon them subdirectory.
+ * Note: subdir must be non-null.
+ */
 @nogc @safe uint iconSizeDistance(const(IconSubDir) subdir, uint matchSize) nothrow
 {
     const uint size = subdir.size();
@@ -490,6 +534,12 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
     }
 }
 
+/**
+ * Find the best match icon corresponding to given size.
+ * Params:
+ *  alternatives = range of tuples of file paths and $(B IconSubDir)s, usually returned by lookupIcon.
+ *  matchSize = desired size of icon.
+ */
 @trusted string matchBestIcon(Range)(Range alternatives, uint matchSize)
 {
     uint minDistance = uint.max;
