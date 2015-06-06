@@ -230,6 +230,14 @@ final class IconThemeFile : IniLikeFile
     }
     
     /**
+     * The name of an icon that should be used as an example of how this theme looks.
+     * Returns: the value associated with "Example" key.
+     */
+    @nogc @safe string example() const nothrow {
+        return value("Example");
+    }
+    
+    /**
      * Some keys can have multiple values, separated by comma. This function helps to parse such kind of strings into the range.
      * Returns: the range of multiple nonempty values.
      * See_Also: joinValues
@@ -271,8 +279,8 @@ final class IconThemeFile : IniLikeFile
     /**
      * Iterating over subdirectories of icon theme.
      */
-    @nogc @trusted auto bySubdir() const {
-        return byGroup().map!(g => IconSubDir(g));
+    @trusted auto bySubdir() const {
+        return directories().filter!(dir => group(dir) !is null).map!(dir => IconSubDir(group(dir)));
     }
     
     /**
@@ -501,4 +509,53 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
     }
     
     return closest;
+}
+
+unittest
+{
+    assert(equal(IconThemeFile.splitValues("16x16/actions,16x16/animations,16x16/apps"), ["16x16/actions", "16x16/animations", "16x16/apps"]));
+    assert(IconThemeFile.splitValues(",").empty);
+    assert(equal(IconThemeFile.joinValues(["16x16/actions", "16x16/animations", "16x16/apps"]), "16x16/actions,16x16/animations,16x16/apps"));
+    assert(IconThemeFile.joinValues([""]).empty);
+    
+    string indexThemeContents =
+`[Icon Theme]
+Name=Hicolor
+Name[ru]=Стандартная тема
+Comment=Fallback icon theme
+Comment[ru]=Резервная тема
+Hidden=true
+Directories=16x16/actions,32x32/animations,scalable/emblems
+Example=folder
+
+[16x16/actions]
+Size=16
+Context=Actions
+Type=Threshold
+
+[32x32/animations]
+Size=32
+Context=Animations
+Type=Fixed
+
+[scalable/emblems]
+Context=Emblems
+Size=64
+MinSize=8
+MaxSize=512
+Type=Scalable`;
+
+    auto iconTheme = new IconThemeFile(iniLikeStringReader(indexThemeContents));
+    assert(iconTheme.name() == "Hicolor");
+    assert(iconTheme.localizedName("ru") == "Стандартная тема");
+    assert(iconTheme.comment() == "Fallback icon theme");
+    assert(iconTheme.localizedComment("ru") == "Резервная тема");
+    assert(iconTheme.hidden());
+    assert(equal(iconTheme.directories(), ["16x16/actions", "32x32/animations", "scalable/emblems"]));
+    assert(iconTheme.example() == "folder");
+    
+    assert(equal(iconTheme.bySubdir().map!(subdir => tuple(subdir.size(), subdir.minSize(), subdir.maxSize(), subdir.context(), subdir.type() )), 
+                 [tuple(16, 16, 16, "Actions", IconSubDir.Type.Threshold), 
+                 tuple(32, 32, 32, "Animations", IconSubDir.Type.Fixed), 
+                 tuple(64, 8, 512, "Emblems", IconSubDir.Type.Scalable)]));
 }
