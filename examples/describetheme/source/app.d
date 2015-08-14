@@ -31,6 +31,7 @@ void main(string[] args)
         writeln("Comment: ", iconTheme.comment);
         writeln("Is hidden: ", iconTheme.hidden);
         writeln("Subdirectories: ", iconTheme.directories);
+        writeln("Inherits: ", iconTheme.inherits());
     }
     catch(Exception e) {
         stderr.writefln("Error occured: %s", e.msg);

@@ -209,7 +209,7 @@ final class IconThemeFile : IniLikeFile
         return value("Name");
     }
     ///ditto, but returns localized value.
-    @safe string localizedName(string locale = null) const nothrow {
+    @safe string localizedName(string locale) const nothrow {
         return localizedValue("Name", locale);
     }
     
@@ -226,7 +226,7 @@ final class IconThemeFile : IniLikeFile
         return value("Comment");
     }
     ///ditto, but returns localized value.
-    @safe string localizedComment(string locale = null) const nothrow {
+    @safe string localizedComment(string locale) const nothrow {
         return localizedValue("Comment", locale);
     }
     
@@ -310,33 +310,37 @@ private:
     IniLikeGroup _iconTheme;
 }
 
-/**
- * The set of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification)
- * Note: This function does not provide any caching of its results. This function does not check if directories exist.
- */
-@safe string[] baseIconDirs() nothrow
-{
-    @trusted static string[] getDataDirs() nothrow {
-        string[] dataDirs;
-        collectException(environment.get("XDG_DATA_DIRS").splitter(":").map!(s => buildPath(s, "icons")).array, dataDirs);
-        return dataDirs;
+version(OSX){}
+else version(Posix) {
+    /**
+    * The set of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification)
+    * Note: This function does not provide any caching of its results. This function does not check if directories exist.
+    * This function is available only on freedesktop systems.
+    */
+    @safe string[] baseIconDirs() nothrow
+    {
+        @trusted static string[] getDataDirs() nothrow {
+            string[] dataDirs;
+            collectException(environment.get("XDG_DATA_DIRS").splitter(":").map!(s => buildPath(s, "icons")).array, dataDirs);
+            return dataDirs;
+        }
+        
+        string[] toReturn;
+        string homePath;
+        collectException(environment.get("HOME"), homePath);
+        if (homePath.length) {
+            toReturn ~= buildPath(homePath, ".icons");
+        }
+        
+        auto dataDirs = getDataDirs();
+        if (dataDirs.length) {
+            toReturn ~= dataDirs;
+        } else {
+            toReturn ~= ["/usr/local/share/icons", "/usr/share/icons"];
+        }
+        toReturn ~= "/usr/share/pixmaps";
+        return toReturn;
     }
-    
-    string[] toReturn;
-    string homePath;
-    collectException(environment.get("HOME"), homePath);
-    if (homePath.length) {
-        toReturn ~= buildPath(homePath, ".icons");
-    }
-    
-    auto dataDirs = getDataDirs();
-    if (dataDirs.length) {
-        toReturn ~= dataDirs;
-    } else {
-        toReturn ~= ["/usr/local/share/icons", "/usr/share/icons"];
-    }
-    toReturn ~= "/usr/share/pixmaps";
-    return toReturn;
 }
 
 /**
@@ -367,6 +371,8 @@ if(is(ElementType!Range == string))
  * Params:
  *  themeName = theme name.
  *  searchIconDirs = base icon directories to search icon themes.
+ * Returns:
+ *  Range of paths to index.theme file corresponding to the given theme.
  * See_Also: baseIconDirs
  */
 @trusted auto findIconTheme(Range)(string themeName, Range searchIconDirs) nothrow
@@ -383,7 +389,7 @@ if(is(Unqual!(ElementType!Range) == string))
 
 /**
  * Find index.theme file for given theme and create instance of IconThemeFile. The first found file will be used.
- * Returns: IconThemeFile object corresponding to given theme or null if not found.
+ * Returns: IconThemeFile object read from the first found index.theme file corresponding to given theme or null if none were found.
  * Throws:
  *  $(B ErrnoException) if file could not be opened.
  *  $(B IniLikeException) if error occured while reading the file.
@@ -461,7 +467,7 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
  * Find the icon with best match to given size. The first perfect match is used. If could not find icon in icon themes, uses non-themed fallback.
  * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
  */
-@safe string findIcon(IconThemes, BaseDirs, Exts)(string iconName, uint matchSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+@trusted string findIcon(IconThemes, BaseDirs, Exts)(string iconName, uint matchSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
     string icon = matchBestIcon(lookupIcon(iconName, iconThemes, searchIconDirs, extensions), matchSize);
     if (icon.empty) {
@@ -477,7 +483,7 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
  * ditto, but find the icon with maximum size.
  * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
  */
-@safe string findIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+@trusted string findIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
     string icon;
     uint max;
@@ -559,6 +565,43 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
     }
     
     return closest;
+}
+
+private @trusted void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, IconThemeFile iconTheme, 
+                                      Range searchIconDirs, 
+                                      IconThemeFile.ReadOptions options)
+{
+    foreach(name; iconTheme.inherits()) {
+        if (!themes.canFind!(function(theme, name) {
+            return theme.internalName == name;
+        })(name)) {
+            try {
+                IconThemeFile f = openIconTheme(name, searchIconDirs, options);
+                if (f) {
+                    themes ~= f;
+                    openBaseThemesHelper(themes, f, searchIconDirs, options);
+                }
+            } catch(Exception e) {
+                
+            }
+        }
+    }
+}
+
+/**
+ * Find all themes the given theme is inhereted from recursively.
+ * Returns:
+ *  Array of unique IconThemeFile objects represented base themes.
+ * Note: it lists only explicitly specified themes. It may or may not include hicolor usually used as fallback theme.
+ */
+@trusted IconThemeFile[] openBaseThemes(Range)(IconThemeFile iconTheme, 
+                                      Range searchIconDirs, 
+                                      IconThemeFile.ReadOptions options = IconThemeFile.ReadOptions.noOptions)
+if(isForwardRange!Range && is(Unqual!(ElementType!Range) == string))
+{
+    IconThemeFile[] themes;
+    openBaseThemesHelper(themes, iconTheme, searchIconDirs, options);
+    return themes;
 }
 
 unittest

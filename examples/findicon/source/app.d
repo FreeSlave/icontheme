@@ -8,9 +8,8 @@ void main(string[] args)
     uint size;
     
     try {
-        auto optResult = getopt(args, 
-                            "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
-                            "size", "Preferred size of icon. If not set it will look for biggest icon.", &size);
+        getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
+               "size", "Preferred size of icon. If not set it will look for biggest icon.", &size);
         
         if (args.length < 2) {
             throw new Exception("Icon is not set");
@@ -22,7 +21,13 @@ void main(string[] args)
         auto readOptions = IconThemeFile.ReadOptions.ignoreGroupDuplicates;
         
         string[] searchIconDirs = baseIconDirs();
-        IconThemeFile[] iconThemes = [openIconTheme(theme, searchIconDirs, readOptions), openIconTheme("hicolor", searchIconDirs, readOptions)];
+        IconThemeFile[] iconThemes;
+        IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs, readOptions);
+        if (iconTheme) {
+            iconThemes ~= iconTheme;
+            iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, readOptions);
+        }
+        iconThemes ~= openIconTheme("hicolor", searchIconDirs, readOptions);
         
         string iconPath;
         if (size) {

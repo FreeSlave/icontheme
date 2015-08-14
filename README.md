@@ -32,7 +32,7 @@ You also can pass the absolute path to file:
 
 Or directory:
 
-    dub run icontheme:describetheme -- /usr/share/icons/gnome/index.theme
+    dub run icontheme:describetheme -- /usr/share/icons/gnome
 
 ### Icon theme test
 
