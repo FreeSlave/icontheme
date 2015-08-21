@@ -3,7 +3,9 @@ import icontheme;
 
 void main()
 {
-    foreach(path; iconThemePaths(baseIconDirs())) {
+    auto searchIconDirs = baseIconDirs();
+    debug writeln("Base paths: ", searchIconDirs);
+    foreach(path; iconThemePaths(searchIconDirs)) {
         debug writeln(path);
         try {
             new IconThemeFile(path, IconThemeFile.ReadOptions.ignoreGroupDuplicates);

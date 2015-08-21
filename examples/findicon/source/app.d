@@ -21,6 +21,7 @@ void main(string[] args)
         auto readOptions = IconThemeFile.ReadOptions.ignoreGroupDuplicates;
         
         string[] searchIconDirs = baseIconDirs();
+        debug writeln("Base paths: ", searchIconDirs);
         IconThemeFile[] iconThemes;
         IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs, readOptions);
         if (iconTheme) {

@@ -174,7 +174,7 @@ final class IconThemeFile : IniLikeFile
      * Throws:
      *  $(B IniLikeException) if error occured while parsing.
      */
-    @trusted this(Range)(Range byLine, ReadOptions options = ReadOptions.noOptions, string fileName = null) if(is(ElementType!Range == IniLikeLine))
+    @trusted this(Range)(Range byLine, ReadOptions options = ReadOptions.noOptions, string fileName = null) if(is(ElementType!Range : IniLikeLine))
     {   
         super(byLine, options, fileName);
         
@@ -191,6 +191,9 @@ final class IconThemeFile : IniLikeFile
         }
     }
     
+    /**
+     * Create new group using groupName.
+     */
     @safe override IniLikeGroup addGroup(string groupName) {
         if (!_iconTheme) {
             enforce(groupName == "Icon Theme", "The first group must be Icon Theme");
@@ -215,7 +218,7 @@ final class IconThemeFile : IniLikeFile
     
     ///The name of the subdirectory index.theme was loaded from.
     @trusted string internalName() const {
-        return fileName().absolutePath().dirName();
+        return fileName().absolutePath().dirName().baseName();
     }
     
     /**
@@ -332,6 +335,14 @@ else version(Posix) {
             toReturn ~= buildPath(homePath, ".icons");
         }
         
+        string dataHome;
+        collectException(environment.get("XDG_DATA_HOME"), dataHome);
+        if (dataHome.length) {
+            toReturn ~= buildPath(dataHome, "icons");
+        } else if (homePath.length) {
+            toReturn ~= buildPath(homePath, ".local/share/icons");
+        }
+        
         auto dataDirs = getDataDirs();
         if (dataDirs.length) {
             toReturn ~= dataDirs;
@@ -376,7 +387,7 @@ if(is(ElementType!Range == string))
  * See_Also: baseIconDirs
  */
 @trusted auto findIconTheme(Range)(string themeName, Range searchIconDirs) nothrow
-if(is(Unqual!(ElementType!Range) == string))
+if(is(ElementType!Range : string))
 {
     return searchIconDirs
         .map!(dir => buildPath(dir, themeName, "index.theme"))
@@ -406,7 +417,7 @@ if(is(Unqual!(ElementType!Range) == string))
 
 /**
  * Lookup icon alternatives in icon themes.
- * Returns: The range of tuples of found icon file names and corresponding $(B IconSubDir)s
+ * Returns: The range of tuples of found icon file paths and corresponding $(B IconSubDir)s
  * Params:
  *  iconName = icon name.
  *  iconThemes = icon themes to search icon in.
@@ -420,7 +431,7 @@ auto result = lookupIcon("folder", iconThemes, baseIconDirs(), [".png", ".xpm"])
  * See_Also: baseIconDirs, lookupFallbackIcon
  */
 @trusted auto lookupIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
-if (is(Unqual!(ElementType!IconThemes) == IconThemeFile) && is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts) == string))
+if (is(ElementType!IconThemes : IconThemeFile) && is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 {
     return iconThemes
         .filter!(iconTheme => iconTheme !is null)
@@ -449,7 +460,7 @@ auto result = lookupFallbackIcon("folder", baseIconDirs(), [".png", ".xpm"]);
  * See_Also: baseIconDirs, lookupIcon
  */
 @trusted auto lookupFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
-if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts) == string))
+if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 {
     return 
         searchIconDirs.map!(basePath => 
@@ -516,7 +527,15 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
     
     final switch(subdir.type()) {
         case IconSubDir.Type.Fixed:
-            return size - matchSize;
+        {
+            if (size > matchSize) {
+                return size - matchSize;
+            } else if (size < matchSize) {
+                return matchSize - size;
+            } else {
+                return 0;
+            }
+        }
         case IconSubDir.Type.Scalable:
         {
             if (matchSize < minSize) {
@@ -541,7 +560,7 @@ if (is(Unqual!(ElementType!BaseDirs) == string) && is (Unqual!(ElementType!Exts)
 }
 
 /**
- * Find the best match icon corresponding to given size.
+ * Find icon closest to the given size.
  * Params:
  *  alternatives = range of tuples of file paths and $(B IconSubDir)s, usually returned by lookupIcon.
  *  matchSize = desired size of icon.
@@ -589,7 +608,7 @@ private @trusted void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, Ic
 }
 
 /**
- * Find all themes the given theme is inhereted from recursively.
+ * Find all themes the given theme is inherited from recursively.
  * Returns:
  *  Array of unique IconThemeFile objects represented base themes.
  * Note: it lists only explicitly specified themes. It may or may not include hicolor usually used as fallback theme.
@@ -597,7 +616,7 @@ private @trusted void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, Ic
 @trusted IconThemeFile[] openBaseThemes(Range)(IconThemeFile iconTheme, 
                                       Range searchIconDirs, 
                                       IconThemeFile.ReadOptions options = IconThemeFile.ReadOptions.noOptions)
-if(isForwardRange!Range && is(Unqual!(ElementType!Range) == string))
+if(isForwardRange!Range && is(ElementType!Range : string))
 {
     IconThemeFile[] themes;
     openBaseThemesHelper(themes, iconTheme, searchIconDirs, options);
