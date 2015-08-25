@@ -32,9 +32,9 @@ void main(string[] args)
         
         string iconPath;
         if (size) {
-            iconPath = findIcon(iconName, size, iconThemes, searchIconDirs, extensions);
+            iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions);
         } else {
-            iconPath = findIcon(iconName, iconThemes, searchIconDirs, extensions);
+            iconPath = findLargestIcon(iconName, iconThemes, searchIconDirs, extensions);
         }
         
         if (iconPath.length) {

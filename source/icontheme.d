@@ -43,40 +43,33 @@ struct IconSubDir
         Scalable
     }
     
-    @safe this(const(IniLikeGroup) group) {
+    @safe this(const(IniLikeGroup) group) nothrow {
         _group = group;
-    }
-    
-    private @nogc @trusted static uint parseSize(string s) nothrow {
-        import std.c.stdio : sscanf;
-        import std.c.string : strncpy;
-        import std.c.stdlib : malloc, free;
         
-        if (s.empty) {
-            return 0;
+        collectException(value("Size").to!uint, _size);
+        collectException(value("MinSize").to!uint, _minSize);
+        collectException(value("MaxSize").to!uint, _maxSize);
+        
+        if (_minSize == 0) {
+            _minSize = _size;
         }
         
-        char* str = cast(char*)malloc(s.length + 1);
-        if (str is null) {
-            return 0;
+        if (_maxSize == 0) {
+            _maxSize = _size;
         }
-        scope(exit) free(str);
         
-        strncpy(str, s.ptr, s.length);
-        str[s.length] = '\0';
-        
-        
-        uint result;
-        sscanf(str, "%u", &result);
-        return result;
+        collectException(value("Threshold").to!uint, _threshold);
+        if (_threshold == 0) {
+            _threshold = 2;
+        }
     }
     
     /**
      * Nominal size of the icons in this directory.
      * Returns: The value associated with "Size" key converted to an unsigned integer, or 0 if the value is not present or not a number.
      */
-    @nogc @safe uint size() const nothrow {
-        return parseSize(value("Size"));
+    @nogc @safe uint size() const nothrow pure {
+        return _size;
     }
     
     /**
@@ -109,9 +102,8 @@ struct IconSubDir
      * Returns: The value associated with "MaxSize" key converted to an unsigned integer, or size() if the value is not present or not a number.
      * See_Also: size, minSize
      */
-    @nogc @safe uint maxSize() const nothrow {
-        uint result = parseSize(value("MaxSize"));
-        return result ? result : size();
+    @nogc @safe uint maxSize() const nothrow pure {
+        return _maxSize;
     }
     
     /** 
@@ -119,19 +111,16 @@ struct IconSubDir
      * Returns: The value associated with "MinSize" key converted to an unsigned integer, or size() if the value is not present or not a number.
      * See_Also: size, maxnSize
      */
-    @nogc @safe uint minSize() const nothrow {
-        uint result = parseSize(value("MinSize"));
-        return result ? result : size();
+    @nogc @safe uint minSize() const nothrow pure {
+        return _minSize;
     }
     
     /**
      * The icons in this directory can be used if the size differ at most this much from the desired size. Defaults to 2 if not present.
      * Returns: The value associated with "Threshold" key, or 2 if the value is not present or not a number.
      */
-    @nogc @safe uint threshold() const nothrow {
-        string t = group.value("Threshold");
-        uint result = parseSize(t);
-        return result ? result : 2;
+    @nogc @safe uint threshold() const nothrow pure {
+        return _threshold;
     }
     
     /**
@@ -150,6 +139,10 @@ struct IconSubDir
     
 private:
     const(IniLikeGroup) _group;
+    uint _size;
+    uint _minSize;
+    uint _maxSize;
+    uint _threshold;
 }
 
 /**
@@ -211,7 +204,7 @@ final class IconThemeFile : IniLikeFile
     @nogc @safe string name() const nothrow {
         return value("Name");
     }
-    ///ditto, but returns localized value.
+    ///Returns: Localized name of icon theme.
     @safe string localizedName(string locale) const nothrow {
         return localizedValue("Name", locale);
     }
@@ -228,7 +221,7 @@ final class IconThemeFile : IniLikeFile
     @nogc @safe string comment() const nothrow {
         return value("Comment");
     }
-    ///ditto, but returns localized value.
+    ///Returns: Localized comment.
     @safe string localizedComment(string locale) const nothrow {
         return localizedValue("Comment", locale);
     }
@@ -416,7 +409,7 @@ if(is(Unqual!(ElementType!Range) == string))
 }
 
 /**
- * Lookup icon alternatives in icon themes.
+ * Lookup icon alternatives in icon themes. Use subdirFilter to filter icons by IconSubDir thus decreasing the number of searchable items and allocations.
  * Returns: The range of tuples of found icon file paths and corresponding $(B IconSubDir)s
  * Params:
  *  iconName = icon name.
@@ -430,28 +423,37 @@ auto result = lookupIcon("folder", iconThemes, baseIconDirs(), [".png", ".xpm"])
 ----------
  * See_Also: baseIconDirs, lookupFallbackIcon
  */
-@trusted auto lookupIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
-if (is(ElementType!IconThemes : IconThemeFile) && is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
+
+template lookupIcon(alias subdirFilter)
 {
-    return iconThemes
-        .filter!(iconTheme => iconTheme !is null)
-        .map!(iconTheme => 
-            iconTheme.bySubdir().map!(subdir => 
-                searchIconDirs.map!(basePath => 
-                    extensions
-                        .map!(extension => tuple(buildPath(basePath, iconTheme.internalName(), subdir.name, iconName ~ extension), subdir)  )
-                        .filter!(function(pair) {
-                            bool ok;
-                            collectException(pair[0].isFile, ok);
-                            return ok;
-                        })
+    @trusted auto lookupIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+    if (is(ElementType!IconThemes : IconThemeFile) && is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
+    {
+        return iconThemes
+            .filter!(iconTheme => iconTheme !is null)
+            .map!(iconTheme => 
+                iconTheme.bySubdir().filter!(subdirFilter).map!(subdir => 
+                    searchIconDirs.map!(basePath => buildPath(basePath, iconTheme.internalName(), subdir.name)).filter!(function(subdirPath) {
+                        bool ok;
+                        collectException(subdirPath.isDir, ok);
+                        return ok;
+                    }).map!(subdirPath =>
+                        extensions
+                            .map!(extension => tuple(buildPath(subdirPath, iconName ~ extension), subdir)  )
+                            .filter!(function(pair) {
+                                bool ok;
+                                debug writeln(pair[0]);
+                                collectException(pair[0].isFile, ok);
+                                return ok;
+                            })
+                    ).joiner
                 ).joiner
-            ).joiner
-        ).joiner;
+            ).joiner;
+    }
 }
 
 /**
- * Lookup icon alternatives out of icon themes. Should be used as fallback lookup, if lookupIcon returned empty range.
+ * Lookup icon alternatives beyond the icon themes. May be used as fallback lookup, if lookupIcon returned empty range.
  * Returns: The range of found icon file names.
  * Example:
 ----------
@@ -478,7 +480,7 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
  * Find the icon with best match to given size. The first perfect match is used. If could not find icon in icon themes, uses non-themed fallback.
  * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
  */
-@trusted string findIcon(IconThemes, BaseDirs, Exts)(string iconName, uint matchSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+deprecated("use findClosestIcon") @trusted string findIcon(IconThemes, BaseDirs, Exts)(string iconName, uint matchSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
     string icon = matchBestIcon(lookupIcon(iconName, iconThemes, searchIconDirs, extensions), matchSize);
     if (icon.empty) {
@@ -494,7 +496,7 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
  * ditto, but find the icon with maximum size.
  * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
  */
-@trusted string findIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
     string icon;
     uint max;
@@ -515,7 +517,87 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 }
 
 /**
- * Distance between desired size and minimum or maximum size value supported by icon them subdirectory.
+ * Find icon of the closest size. The first perfect match is used. If could not find icon in icon themes, uses the first found non-themed fallback.
+ * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
+ */
+@trusted string findClosestIcon(IconThemes, BaseDirs, Exts)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+{
+    uint minDistance = uint.max;
+    uint iconDistance = minDistance;
+    string closest;
+    
+    foreach(pair; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+        uint distance = iconSizeDistance(subdir, size);
+        if (distance < minDistance) {
+            minDistance = distance;
+        }
+        return distance <= minDistance;
+    })(iconName, iconThemes, searchIconDirs, extensions)) {
+        auto path = pair[0];
+        auto subdir = pair[1];
+        
+        if (iconSizeDistance(subdir, size) < iconDistance) {
+            iconDistance = minDistance;
+            closest = path;
+        }
+    }
+    
+    if (closest.empty) {
+        return findFallbackIcon(iconName, searchIconDirs, extensions);
+    } else {
+        return closest;
+    }
+}
+
+/**
+ * Find icon of the largest size. If could not find icon in icon themes, uses the first found non-themed fallback.
+ * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
+ */
+@trusted string findLargestIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+{
+    uint max = 0;
+    uint iconSize = max;
+    string largest;
+    
+    foreach(pair; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+        if (subdir.size() > max) {
+            max = subdir.size();
+        }
+        return subdir.size() >= max;
+    })(iconName, iconThemes, searchIconDirs, extensions)) {
+        auto path = pair[0];
+        auto subdir = pair[1];
+        
+        if (subdir.size() > iconSize) {
+            iconSize = max;
+            largest = path;
+        }
+    }
+    
+    if (largest.empty) {
+        return findFallbackIcon(iconName, searchIconDirs, extensions);
+    } else {
+        return largest;
+    }
+}
+
+
+/**
+ * Find fallback icon outside of icon themes.
+ * See_Also: lookupFallbackIcon, baseIconDirs
+ */
+@trusted string findFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
+{
+    auto r = lookupFallbackIcon(iconName, searchIconDirs, extensions);
+    if (r.empty) {
+        return null;
+    } else {
+        return r.front;
+    }
+}
+
+/**
+ * Distance between desired size and minimum or maximum size value supported by icon theme subdirectory.
  * Note: subdir must be non-null.
  */
 @nogc @safe uint iconSizeDistance(const(IconSubDir) subdir, uint matchSize) nothrow
@@ -559,8 +641,25 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
     }
 }
 
+@nogc @safe bool isSizeWithinRange(const(IconSubDir) subdir, uint matchSize) nothrow
+{
+    const uint size = subdir.size();
+    const uint minSize = subdir.minSize();
+    const uint maxSize = subdir.maxSize();
+    const uint threshold = subdir.threshold();
+    
+    final switch(subdir.type()) {
+        case IconSubDir.Type.Fixed:
+            return size == matchSize;
+        case IconSubDir.Type.Scalable:
+            return matchSize <= (size + threshold) && matchSize >= (size - threshold);
+        case IconSubDir.Type.Threshold:
+            return matchSize >= minSize && matchSize <= maxSize;
+    }
+}
+
 /**
- * Find icon closest to the given size.
+ * Find icon closest to the given size among given alternatives.
  * Params:
  *  alternatives = range of tuples of file paths and $(B IconSubDir)s, usually returned by lookupIcon.
  *  matchSize = desired size of icon.
