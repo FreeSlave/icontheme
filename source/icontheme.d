@@ -77,6 +77,16 @@ struct IconSubDir
         _name = group.name();
     }
     
+    @safe this(uint size, Type type = Type.Threshold, string context = null, uint minSize = 0, uint maxSize = 0, uint threshold = 2)
+    {
+        _size = size;
+        _context = context;
+        _type = type;
+        _minSize = minSize ? minSize : size;
+        _maxSize = maxSize ? maxSize : size;
+        _threshold = threshold;
+    }
+    
     /**
      * The name of section in icon theme file and relative path to icons.
      */
@@ -657,9 +667,8 @@ deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs,
 
 /**
  * Distance between desired size and minimum or maximum size value supported by icon theme subdirectory.
- * Note: subdir must be non-null.
  */
-@nogc @safe uint iconSizeDistance(in IconSubDir subdir, uint matchSize) nothrow
+@nogc @safe uint iconSizeDistance(in IconSubDir subdir, uint matchSize) nothrow pure
 {
     const uint size = subdir.size();
     const uint minSize = subdir.minSize();
@@ -700,10 +709,33 @@ deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs,
     }
 }
 
+///
+unittest 
+{
+    auto fixed = IconSubDir(32, IconSubDir.Type.Fixed);
+    assert(iconSizeDistance(fixed, fixed.size()) == 0);
+    assert(iconSizeDistance(fixed, 30) == 2);
+    assert(iconSizeDistance(fixed, 35) == 3);
+    
+    auto threshold = IconSubDir(32, IconSubDir.Type.Threshold, "", 0, 0, 5);
+    assert(iconSizeDistance(threshold, threshold.size()) == 0);
+    assert(iconSizeDistance(threshold, threshold.size() - threshold.threshold()) == 0);
+    assert(iconSizeDistance(threshold, threshold.size() + threshold.threshold()) == 0);
+    assert(iconSizeDistance(threshold, 26) == 1);
+    assert(iconSizeDistance(threshold, 39) == 2);
+    
+    auto scalable = IconSubDir(32, IconSubDir.Type.Scalable, "", 24, 48);
+    assert(iconSizeDistance(scalable, scalable.size()) == 0);
+    assert(iconSizeDistance(scalable, scalable.minSize()) == 0);
+    assert(iconSizeDistance(scalable, scalable.maxSize()) == 0);
+    assert(iconSizeDistance(scalable, 20) == 4);
+    assert(iconSizeDistance(scalable, 50) == 2);
+}
+
 /**
  * Check if matchSize belongs to subdir's size range.
  */
-@nogc @safe bool matchIconSize(in IconSubDir subdir, uint matchSize) nothrow
+@nogc @safe bool matchIconSize(in IconSubDir subdir, uint matchSize) nothrow pure
 {
     const uint size = subdir.size();
     const uint minSize = subdir.minSize();
@@ -713,11 +745,31 @@ deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs,
     final switch(subdir.type()) {
         case IconSubDir.Type.Fixed:
             return size == matchSize;
-        case IconSubDir.Type.Scalable:
-            return matchSize <= (size + threshold) && matchSize >= (size - threshold);
         case IconSubDir.Type.Threshold:
+            return matchSize <= (size + threshold) && matchSize >= (size - threshold);
+        case IconSubDir.Type.Scalable:
             return matchSize >= minSize && matchSize <= maxSize;
     }
+}
+
+///
+unittest 
+{
+    auto fixed = IconSubDir(32, IconSubDir.Type.Fixed);
+    assert(matchIconSize(fixed, fixed.size()));
+    assert(!matchIconSize(fixed, fixed.size() - 2));
+    
+    auto threshold = IconSubDir(32, IconSubDir.Type.Threshold, "", 0, 0, 5);
+    assert(matchIconSize(threshold, threshold.size() + threshold.threshold()));
+    assert(matchIconSize(threshold, threshold.size() - threshold.threshold()));
+    assert(!matchIconSize(threshold, threshold.size() + threshold.threshold() + 1));
+    assert(!matchIconSize(threshold, threshold.size() - threshold.threshold() - 1));
+    
+    auto scalable = IconSubDir(32, IconSubDir.Type.Scalable, "", 24, 48);
+    assert(matchIconSize(scalable, scalable.minSize()));
+    assert(matchIconSize(scalable, scalable.maxSize()));
+    assert(!matchIconSize(scalable, scalable.minSize() - 1));
+    assert(!matchIconSize(scalable, scalable.maxSize() + 1));
 }
 
 /**
