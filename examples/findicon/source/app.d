@@ -1,6 +1,7 @@
 import std.stdio;
 import std.getopt;
 import icontheme;
+import std.algorithm;
 
 void main(string[] args)
 {
@@ -17,7 +18,7 @@ void main(string[] args)
         
         string iconName = args[1];
         
-        string[] extensions = [".png", ".xpm", ".svg"];
+        string[] extensions = [".png", ".xpm"];
         auto readOptions = IconThemeFile.ReadOptions.ignoreGroupDuplicates;
         
         string[] searchIconDirs = baseIconDirs();

@@ -44,11 +44,9 @@ struct IconSubDir
     }
     
     @safe this(const(IniLikeGroup) group) nothrow {
-        _group = group;
-        
-        collectException(value("Size").to!uint, _size);
-        collectException(value("MinSize").to!uint, _minSize);
-        collectException(value("MaxSize").to!uint, _maxSize);
+        collectException(group.value("Size").to!uint, _size);
+        collectException(group.value("MinSize").to!uint, _minSize);
+        collectException(group.value("MaxSize").to!uint, _maxSize);
         
         if (_minSize == 0) {
             _minSize = _size;
@@ -58,10 +56,32 @@ struct IconSubDir
             _maxSize = _size;
         }
         
-        collectException(value("Threshold").to!uint, _threshold);
+        collectException(group.value("Threshold").to!uint, _threshold);
         if (_threshold == 0) {
             _threshold = 2;
         }
+        
+        _type = Type.Threshold;
+        
+        string t = group.value("Type");
+        if (t.length) {
+            if (t == "Fixed") {
+                _type = Type.Fixed;
+            } else if (t == "Scalable") {
+                _type = Type.Scalable;
+            }
+        }
+        
+        
+        _context = group.value("Context");
+        _name = group.name();
+    }
+    
+    /**
+     * The name of section in icon theme file and relative path to icons.
+     */
+    @nogc @safe string name() const nothrow pure {
+        return _name;
     }
     
     /**
@@ -76,25 +96,16 @@ struct IconSubDir
      * The context the icon is normally used in.
      * Returns: The value associated with "Context" key.
      */
-    @nogc @safe string context() const nothrow {
-        return group.value("Context");
+    @nogc @safe string context() const nothrow pure {
+        return _context;
     }
     
     /** 
      * The type of icon sizes for the icons in this directory.
      * Returns: The value associated with "Type" key or if not present Type.Threshold is returned. 
      */
-    @nogc @safe Type type() const nothrow {
-        string t = group.value("Type");
-        if (t.length) {
-            if (t == "Fixed") {
-                return Type.Fixed;
-            } else if (t == "Scalable") {
-                return Type.Scalable;
-            }
-        }
-        
-        return Type.Threshold;
+    @nogc @safe Type type() const nothrow pure {
+        return _type;
     }
     
     /** 
@@ -122,27 +133,14 @@ struct IconSubDir
     @nogc @safe uint threshold() const nothrow pure {
         return _threshold;
     }
-    
-    /**
-     * Underlying IniLikeGroup instance. 
-     * Returns: IniLikeGroup this object was constrcucted from.
-     * Note: Usually you don't need to call this function explicitly since you can rely on alias this.
-     */
-    @nogc @safe const(IniLikeGroup) group() const nothrow {
-        return _group;
-    }
-    
-    /**
-     * This alias allows to call functions of underlying IniLikeGroup instance.
-     */
-    alias group this;
-    
 private:
-    const(IniLikeGroup) _group;
     uint _size;
     uint _minSize;
     uint _maxSize;
     uint _threshold;
+    Type _type;
+    string _context;
+    string _name;
 }
 
 /**
@@ -409,8 +407,9 @@ if(is(Unqual!(ElementType!Range) == string))
 }
 
 /**
- * Lookup icon alternatives in icon themes. Use subdirFilter to filter icons by IconSubDir thus decreasing the number of searchable items and allocations.
- * Returns: The range of tuples of found icon file paths and corresponding $(B IconSubDir)s
+ * Lookup icon alternatives in icon themes. 
+ * Use subdirFilter to filter icons by IconSubDir thus decreasing the number of searchable items and allocations.
+ * Returns: Range of tuples of found icon file paths and corresponding $(B IconSubDir)s.
  * Params:
  *  iconName = icon name.
  *  iconThemes = icon themes to search icon in.
@@ -419,37 +418,84 @@ if(is(Unqual!(ElementType!Range) == string))
  * Note: Specification says that extension must be ".png", ".xpm" or ".svg", though SVG is not required to be supported.
  * Example:
 ----------
-auto result = lookupIcon("folder", iconThemes, baseIconDirs(), [".png", ".xpm"]);
+foreach(item; lookupIcon!(subdir => subdir.context == "Places" && subdir.size >= 32)("folder", iconThemes, baseIconDirs(), [".png", ".xpm"]))
+{
+    writefln("Icon file: %s. Context: %s. Size: %s", item[0], item[1].context, item[1].size);
+}
 ----------
  * See_Also: baseIconDirs, lookupFallbackIcon
  */
 
-template lookupIcon(alias subdirFilter)
+
+@trusted auto lookupIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+if (is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 {
-    @trusted auto lookupIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
-    if (is(ElementType!IconThemes : IconThemeFile) && is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
-    {
-        return iconThemes
-            .filter!(iconTheme => iconTheme !is null)
-            .map!(iconTheme => 
-                iconTheme.bySubdir().filter!(subdirFilter).map!(subdir => 
-                    searchIconDirs.map!(basePath => buildPath(basePath, iconTheme.internalName(), subdir.name)).filter!(function(subdirPath) {
-                        bool ok;
-                        collectException(subdirPath.isDir, ok);
-                        return ok;
-                    }).map!(subdirPath =>
-                        extensions
-                            .map!(extension => tuple(buildPath(subdirPath, iconName ~ extension), subdir)  )
-                            .filter!(function(pair) {
-                                bool ok;
-                                debug writeln(pair[0]);
-                                collectException(pair[0].isFile, ok);
-                                return ok;
-                            })
-                    ).joiner
-                ).joiner
-            ).joiner;
-    }
+    return iconThemes
+        .filter!(iconTheme => iconTheme !is null)
+        .map!(iconTheme => 
+            iconTheme.bySubdir().filter!(subdirFilter).map!(delegate(subdir) { 
+                return searchIconDirs.map!(delegate(basePath) { 
+                    string subdirPath = buildPath(basePath, iconTheme.internalName(), subdir.name);
+                    //debug writefln("Subdir map: %s", subdirPath);
+                    return subdirPath; 
+                }).cache().filter!(function(subdirPath) {
+                    bool ok;
+                    //debug writefln("Subdir filter: %s", subdirPath);
+                    collectException(subdirPath.isDir, ok);
+                    return ok;
+                }).map!(subdirPath =>
+                    extensions
+                        .map!(delegate(extension) {
+                            auto path = buildPath(subdirPath, iconName ~ extension);
+                            //debug writefln("Map path: %s", path);
+                            return tuple(path, subdir); 
+                        }).cache().filter!(function(pair) {
+                            bool ok;
+                            //debug writefln("Filter path: %s", pair[0]);
+                            collectException(pair[0].isFile, ok);
+                            return ok;
+                        })
+                ).joiner;
+            }).joiner
+        ).joiner;
+}
+
+/**
+ * Iterate over all icons in icon themes. 
+ * Use subdirFilter to filter icons by IconSubDir thus decreasing the number of searchable items and allocations.
+ * Returns: Range of tuples of found icon file paths and corresponding $(B IconSubDir)s.
+ * Params:
+ *  iconThemes = icon themes to search icon in.
+ *  searchIconDirs = base icon directories.
+ *  extensions = possible file extensions for icon files.
+ * Example:
+-------------
+foreach(item; lookupThemeIcons!(subdir => subdir.context == "MimeTypes" && subdir.size >= 32)(iconThemes, baseIconDirs(), [".png", ".xpm"]))
+{
+    writefln("Icon file: %s. Context: %s. Size: %s", item[0], item[1].context, item[1].size);
+}
+-------------
+ * See_Also: baseIconDirs, lookupIcon
+ */
+
+@trusted lookupThemeIcons(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions) 
+if (is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
+{
+    return iconThemes.filter!(iconTheme => iconTheme !is null).map!(
+        iconTheme => iconTheme.bySubdir().filter!(subdirFilter).map!(
+            subdir => searchIconDirs.map!(
+                basePath => buildPath(basePath, iconTheme.internalName(), subdir.name)
+            ).cache().filter!(function(subdirPath) {
+                bool ok;
+                collectException(subdirPath.isDir, ok);
+                return ok;
+            }).map!(
+                subdirPath => subdirPath.dirEntries(SpanMode.shallow).filter!(
+                    filePath => filePath.isFile && extensions.canFind(filePath.extension) 
+                ).map!(filePath => tuple(filePath, subdir)).cache()
+            ).joiner
+        ).joiner
+    ).joiner;
 }
 
 /**
@@ -520,13 +566,17 @@ deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs,
  * Find icon of the closest size. The first perfect match is used. If could not find icon in icon themes, uses the first found non-themed fallback.
  * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
  */
-@trusted string findClosestIcon(IconThemes, BaseDirs, Exts)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+@trusted string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
     uint minDistance = uint.max;
     uint iconDistance = minDistance;
     string closest;
     
     foreach(pair; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+        if (!subdirFilter(subdir)) {
+            return false;
+        }
+        
         uint distance = iconSizeDistance(subdir, size);
         if (distance < minDistance) {
             minDistance = distance;
@@ -536,7 +586,12 @@ deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs,
         auto path = pair[0];
         auto subdir = pair[1];
         
-        if (iconSizeDistance(subdir, size) < iconDistance) {
+        uint distance = iconSizeDistance(subdir, size);
+        if (distance == 0) {
+            return path;
+        }
+        
+        if (distance < iconDistance) {
             iconDistance = minDistance;
             closest = path;
         }
@@ -549,17 +604,21 @@ deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs,
     }
 }
 
+
 /**
  * Find icon of the largest size. If could not find icon in icon themes, uses the first found non-themed fallback.
  * See_Also: baseIconDirs, lookupIcon, lookupFallbackIcon
  */
-@trusted string findLargestIcon(IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+@trusted string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
     uint max = 0;
     uint iconSize = max;
     string largest;
     
     foreach(pair; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+        if (!subdirFilter(subdir)) {
+            return false;
+        }
         if (subdir.size() > max) {
             max = subdir.size();
         }
@@ -600,7 +659,7 @@ deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs,
  * Distance between desired size and minimum or maximum size value supported by icon theme subdirectory.
  * Note: subdir must be non-null.
  */
-@nogc @safe uint iconSizeDistance(const(IconSubDir) subdir, uint matchSize) nothrow
+@nogc @safe uint iconSizeDistance(in IconSubDir subdir, uint matchSize) nothrow
 {
     const uint size = subdir.size();
     const uint minSize = subdir.minSize();
@@ -641,7 +700,10 @@ deprecated("use findLargestIcon") @trusted string findIcon(IconThemes, BaseDirs,
     }
 }
 
-@nogc @safe bool isSizeWithinRange(const(IconSubDir) subdir, uint matchSize) nothrow
+/**
+ * Check if matchSize belongs to subdir's size range.
+ */
+@nogc @safe bool matchIconSize(in IconSubDir subdir, uint matchSize) nothrow
 {
     const uint size = subdir.size();
     const uint minSize = subdir.minSize();
