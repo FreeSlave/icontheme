@@ -41,9 +41,7 @@ void main(string[] args)
         }
         iconThemes ~= openIconTheme("hicolor", searchIconDirs, readOptions);
         
-//         foreach(t; lookupIcon(iconName, iconThemes, searchIconDirs, extensions)) {
-//             debug writeln(t[0]);
-//         }
+        debug writeln("Using icon themes: ", iconThemes.map!(iconTheme => iconTheme.fileName()));
         
         string iconPath;
         if (size) {
