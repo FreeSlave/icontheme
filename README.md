@@ -2,7 +2,7 @@
 
 D library for working with icon themes in freedesktop environments. See [Icon Theme Specification](http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html).
 
-[![Build Status](https://travis-ci.org/MyLittleRobo/icontheme.svg?branch=master)](https://travis-ci.org/MyLittleRobo/icontheme)
+[![Build Status](https://travis-ci.org/MyLittleRobo/icontheme.svg?branch=master)](https://travis-ci.org/MyLittleRobo/icontheme) [![Coverage Status](https://coveralls.io/repos/MyLittleRobo/icontheme/badge.svg?branch=master&service=github)](https://coveralls.io/github/MyLittleRobo/icontheme?branch=master)
 
 ## Generating documentation
 

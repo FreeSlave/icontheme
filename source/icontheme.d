@@ -114,7 +114,7 @@ struct IconSubDir
     
     /** 
      * The type of icon sizes for the icons in this directory.
-     * Returns: The value associated with "Type" key or if not present Type.Threshold is returned. 
+     * Returns: The value associated with "Type" key or Type.Threshold if not specified. 
      */
     @nogc @safe Type type() const nothrow pure {
         return _type;
@@ -163,7 +163,7 @@ final class IconThemeFile : IniLikeFile
     alias IniLikeFile.ReadOptions ReadOptions;
     
     /**
-     * Reads desktop file from file.
+     * Reads icon theme from file.
      * Throws:
      *  $(B ErrnoException) if file could not be opened.
      *  $(B IniLikeException) if error occured while reading the file.
@@ -182,7 +182,22 @@ final class IconThemeFile : IniLikeFile
         super(byLine, options, fileName);
         
          _iconTheme = group("Icon Theme");
-         enforce(_iconTheme, new IniLikeException("no groups", 0));
+         enforce(_iconTheme, new IniLikeException("No Icon Theme group", 0));
+    }
+    
+    /**
+     * Constructs IconThemeFile with empty "Icon Theme" group.
+     */
+    @safe this() {
+        addGroup("Icon Theme");
+    }
+    
+    ///
+    unittest
+    {
+        auto df = new IconThemeFile();
+        assert(df.iconTheme());
+        assert(df.directories().empty);
     }
     
     /**
@@ -317,16 +332,13 @@ private:
 }
 
 
-/**
-* The set of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification)
-* Note: This function does not provide any caching of its results. This function does not check if directories exist.
-* Returns empty array on non-freedesktop systems.
-*/
-@safe string[] baseIconDirs() nothrow
-{
-    version(OSX) {
-        return null;
-    } else version(Posix) {
+version(OSX) {} else version(Posix) {
+    /**
+    * The set of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification)
+    * Note: This function does not provide any caching of its results. This function does not check if directories exist.
+    */
+    @safe string[] baseIconDirs() nothrow
+    {
         @trusted static string[] getDataDirs() nothrow {
             string[] dataDirs;
             collectException(environment.get("XDG_DATA_DIRS").splitter(":").map!(s => buildPath(s, "icons")).array, dataDirs);
@@ -351,8 +363,6 @@ private:
         toReturn ~= getDataDirs();
         toReturn ~= "/usr/share/pixmaps";
         return toReturn;
-    } else {
-        return null;
     }
 }
 
@@ -594,7 +604,6 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
     uint minDistance = uint.max;
     uint iconDistance = minDistance;
     string closest;
-    Rebindable!(ElementType!IconThemes) iconTheme = null;
     
     foreach(t; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
         if (!subdirFilter(subdir)) {
@@ -610,7 +619,6 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
         auto path = t[0];
         auto subdir = t[1];
         auto theme = t[2];
-        iconTheme = theme;
         
         uint distance = iconSizeDistance(subdir, size);
         if (distance == 0) {
@@ -641,7 +649,6 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
     uint max = 0;
     uint iconSize = max;
     string largest;
-    Rebindable!(ElementType!IconThemes) iconTheme = null;
     
     foreach(t; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
         if (!subdirFilter(subdir)) {
@@ -655,7 +662,6 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
         auto path = t[0];
         auto subdir = t[1];
         auto theme = t[2];
-        iconTheme = theme;
         
         if (subdir.size() > iconSize) {
             iconSize = max;
