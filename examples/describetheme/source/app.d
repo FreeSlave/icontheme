@@ -4,11 +4,11 @@ import std.file;
 import std.exception;
 import icontheme;
 
-void main(string[] args)
+int main(string[] args)
 {
     if (args.length < 2) {
         writeln("Usage: %s <icontheme>", args[0]);
-        return;
+        return 0;
     }
     
     string themePath = args[1];
@@ -35,5 +35,8 @@ void main(string[] args)
     }
     catch(Exception e) {
         stderr.writefln("Error occured: %s", e.msg);
+        return 1;
     }
+    
+    return 0;
 }

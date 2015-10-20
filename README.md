@@ -41,6 +41,10 @@ Use this example to check if the icontheme library can parse all themes on your 
 
     dub run icontheme:iconthemetest
 
+Run to print names of all examined index.theme files to stdout:
+
+    dub run icontheme:iconthemetest -- --verbose
+    
 ### Find icon
 
 Utility that finds icon by its name.
@@ -55,4 +59,12 @@ And size:
 
     dub run icontheme:findicon -- --theme=gnome --size=32 folder
 
+### Print icons
 
+Search icons in specified theme, themes it inherits from, hicolor theme and icons that don't belong to any theme and print them to stdout:
+
+    dub run icontheme:printicons -- --theme=gnome > result.txt
+
+Search only in specified theme:
+
+    dub run icontheme:printicons -- --include-nonthemed=false --include-hicolor=false --include-base=false --theme=Faenza > result.txt

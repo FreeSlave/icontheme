@@ -2,13 +2,21 @@ import std.stdio;
 import std.algorithm;
 import std.getopt;
 import std.file;
+import std.range;
 import icontheme;
 
-void main(string[] args)
+int main(string[] args)
 {
     string[] searchIconDirs;
     bool verbose;
-    getopt(args, "verbose", "Print name of each examined index.theme file to standard output", &verbose);
+    
+    try {
+        getopt(args, "verbose", "Print name of each examined index.theme file to standard output", &verbose);
+    } catch(Exception e) {
+        stderr.writeln(e.msg);
+        return 1;
+    }
+    
     
     if (args.length > 1) {
         searchIconDirs = args[1..$];
@@ -28,13 +36,13 @@ void main(string[] args)
         }
     }
     
-    if (!searchIconDirs.length) {
-        stderr.writeln("No icon directories given nor could be detected");
+    if (searchIconDirs.empty) {
+        stderr.writeln("No icon theme directories given nor could be detected");
         stderr.writefln("Usage: %s [DIRECTORY]...", args[0]);
-        return;
+        return 1;
     }
     
-    writefln("Using directories: %-(%s, %)", searchIconDirs);
+    debug writefln("Using directories: %-(%s, %)", searchIconDirs);
     foreach(path; iconThemePaths(searchIconDirs)) {
         if (verbose) {
             writeln(path);
@@ -49,4 +57,6 @@ void main(string[] args)
             stderr.writefln("Error reading %s: %s", path, e.msg);
         }
     }
+    
+    return 0;
 }

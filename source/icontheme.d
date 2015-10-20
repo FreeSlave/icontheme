@@ -334,7 +334,7 @@ private:
 
 version(OSX) {} else version(Posix) {
     /**
-    * The set of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification)
+    * The set of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification). Available only on freedesktop systems.
     * Note: This function does not provide any caching of its results. This function does not check if directories exist.
     */
     @safe string[] baseIconDirs() nothrow
@@ -536,14 +536,14 @@ if (is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs
         iconTheme => iconTheme.bySubdir().filter!(subdirFilter).map!(
             subdir => searchIconDirs.map!(
                 basePath => buildPath(basePath, iconTheme.internalName(), subdir.name)
-            ).cache().filter!(function(subdirPath) {
+            ).filter!(function(subdirPath) {
                 bool ok;
                 collectException(subdirPath.isDir, ok);
                 return ok;
             }).map!(
                 subdirPath => subdirPath.dirEntries(SpanMode.shallow).filter!(
                     filePath => filePath.isFile && extensions.canFind(filePath.extension) 
-                ).map!(filePath => tuple(filePath, subdir, iconTheme)).cache()
+                ).map!(filePath => tuple(filePath, subdir, iconTheme))
             ).joiner
         ).joiner
     ).joiner;
@@ -559,7 +559,7 @@ if (is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs
  *  lookupFallbackIcon, baseIconDirs
  */
 @trusted auto lookupFallbackIcons(BaseDirs, Exts)(BaseDirs searchIconDirs, Exts extensions)
-if (isForwardRange(searchIconDirs) && isForwardRange(extensions) && 
+if (isInputRange!(BaseDirs) && isForwardRange!(Exts) && 
     isSomeString!(ElementType!BaseDirs) && isSomeString!(ElementType!Exts))
 {
     return searchIconDirs.filter!(function(basePath) {

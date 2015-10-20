@@ -6,23 +6,21 @@ import std.array;
 
 int main(string[] args)
 {
+    bool includeHicolor = true;
+    bool includeNonThemed = true;
+    bool includeBase = true;
     string theme;
-    uint size;
     string basePathsStr;
     string extensionsStr;
     
     try {
         getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
-               "size", "Preferred size of icon. If not set it will look for biggest icon.", &size,
               "baseDirs", "Base icon paths to search themes separated by ':'.", &basePathsStr,
-              "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr
+              "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr,
+              "include-hicolor", "Whether to include hicolor theme in results or not. By default true.", &includeHicolor,
+              "include-nonthemed", "Whether to print icons out of themes or not. By default true.", &includeNonThemed,
+              "include-base", "Whether to include base themes or not. By default true.", &includeBase
               );
-        
-        if (args.length < 2) {
-            throw new Exception("Icon is not set");
-        }
-        
-        string iconName = args[1];
         
         string[] searchIconDirs;
         if (basePathsStr.empty) {
@@ -41,38 +39,32 @@ int main(string[] args)
         string[] extensions = extensionsStr.empty ? [".png", ".xpm"] : extensionsStr.splitter(':').array;
         auto readOptions = IconThemeFile.ReadOptions.ignoreGroupDuplicates;
         
-        
-        debug writefln("Using directories: %-(%s, %)", searchIconDirs);
-        debug writeln("Extensions: ", extensions);
-        
         IconThemeFile[] iconThemes;
         if (theme.length) {
             IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs, readOptions);
             if (iconTheme) {
                 iconThemes ~= iconTheme;
+            }
+            if(includeBase) {
                 iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, readOptions);
             }
         }
-        iconThemes ~= openIconTheme("hicolor", searchIconDirs, readOptions);
-        
-        debug writeln("Using icon theme files: ", iconThemes.map!(iconTheme => iconTheme.fileName()));
-        
-        string iconPath;
-        if (size) {
-            iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions);
-        } else {
-            iconPath = findLargestIcon(iconName, iconThemes, searchIconDirs, extensions);
+        if (includeHicolor) {
+            iconThemes ~= openIconTheme("hicolor", searchIconDirs, readOptions);
         }
         
-        if (iconPath.length) {
-            writeln(iconPath);
-        } else {
-            stderr.writeln("Could not find icon");
-            return 1;
+        foreach(item; lookupThemeIcons(iconThemes, searchIconDirs, extensions)) {
+            writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item[0], item[1].context, item[1].size, item[2].name);
         }
-    }
-    catch (Exception e) {
-        stderr.writefln("Error occured: %s", e.msg);
+        
+        if (includeNonThemed) {
+            writeln("\nNon themed icons:");
+            foreach(path; lookupFallbackIcons(searchIconDirs, extensions)) {
+                writeln(path);
+            }
+        }
+        
+    } catch(Exception e) {
         return 1;
     }
     return 0;
