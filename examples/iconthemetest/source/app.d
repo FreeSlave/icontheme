@@ -24,6 +24,8 @@ int main(string[] args)
         version(OSX) {} else version(Posix) {
             searchIconDirs = baseIconDirs();
         } else version(Windows) {
+            import std.process : environment;
+            import std.path : buildPath;
             try {
                 auto root = environment.get("SYSTEMDRIVE", "C:");
                 auto kdeDir = root ~ `\ProgramData\KDE\share`;

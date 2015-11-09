@@ -8,13 +8,13 @@ int main(string[] args)
 {
     string theme;
     uint size;
-    string basePathsStr;
+    string[] baseDirs;
     string extensionsStr;
     
     try {
         getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
                "size", "Preferred size of icon. If not set it will look for biggest icon.", &size,
-              "baseDirs", "Base icon paths to search themes separated by ':'.", &basePathsStr,
+              "baseDir", "Base icon path to search themes. This option can be repeated to specify multiple paths.", &baseDirs,
               "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr
               );
         
@@ -25,12 +25,12 @@ int main(string[] args)
         string iconName = args[1];
         
         string[] searchIconDirs;
-        if (basePathsStr.empty) {
+        if (baseDirs.empty) {
             version(OSX) {} else version(Posix) {
                 searchIconDirs = baseIconDirs();
             }
         } else {
-            searchIconDirs = basePathsStr.splitter(':').array;
+            searchIconDirs = baseDirs;
         }
         if (searchIconDirs.empty) {
             stderr.writeln("No icon theme directories given nor could be detected");
@@ -43,7 +43,7 @@ int main(string[] args)
         
         
         debug writefln("Using directories: %-(%s, %)", searchIconDirs);
-        debug writeln("Extensions: ", extensions);
+        debug writeln("Using extensions: ", extensions);
         
         IconThemeFile[] iconThemes;
         if (theme.length) {
@@ -53,7 +53,11 @@ int main(string[] args)
                 iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, readOptions);
             }
         }
-        iconThemes ~= openIconTheme("hicolor", searchIconDirs, readOptions);
+        
+        auto hicolorFound = iconThemes.filter!(theme => theme !is null).find!(theme => theme.internalName == "hicolor");
+        if (hicolorFound.empty) {
+            iconThemes ~= openIconTheme("hicolor", searchIconDirs, readOptions);
+        }
         
         debug writeln("Using icon theme files: ", iconThemes.map!(iconTheme => iconTheme.fileName()));
         

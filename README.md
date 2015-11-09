@@ -55,16 +55,16 @@ You can also specify theme:
 
     dub run icontheme:findicon -- --theme=gnome folder
 
-And size:
+And preferred size:
 
     dub run icontheme:findicon -- --theme=gnome --size=32 folder
 
 ### Print icons
 
-Search icons in specified theme, themes it inherits from, hicolor theme and icons that don't belong to any theme and print them to stdout:
+Search icons in specified theme:
 
     dub run icontheme:printicons -- --theme=gnome > result.txt
 
-Search only in specified theme:
+Include hicolor theme, base themes and icons that don't belong to any theme:
 
-    dub run icontheme:printicons -- --include-nonthemed=false --include-hicolor=false --include-base=false --theme=Faenza > result.txt
+    dub run icontheme:printicons -- --include-nonthemed --include-hicolor --include-base --theme=Faenza > result.txt

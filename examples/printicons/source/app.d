@@ -6,29 +6,29 @@ import std.array;
 
 int main(string[] args)
 {
-    bool includeHicolor = true;
-    bool includeNonThemed = true;
-    bool includeBase = true;
+    bool includeHicolor;
+    bool includeNonThemed;
+    bool includeBase;
     string theme;
-    string basePathsStr;
+    string[] baseDirs;
     string extensionsStr;
     
     try {
         getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
-              "baseDirs", "Base icon paths to search themes separated by ':'.", &basePathsStr,
+              "baseDir", "Base icon path to search themes. This option can be repeated to specify multiple paths.", &baseDirs,
               "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr,
-              "include-hicolor", "Whether to include hicolor theme in results or not. By default true.", &includeHicolor,
-              "include-nonthemed", "Whether to print icons out of themes or not. By default true.", &includeNonThemed,
-              "include-base", "Whether to include base themes or not. By default true.", &includeBase
+              "include-hicolor", "Whether to include hicolor theme in results or not. By default false.", &includeHicolor,
+              "include-nonthemed", "Whether to print icons out of themes or not. By default false.", &includeNonThemed,
+              "include-base", "Whether to include base themes or not. By default false.", &includeBase
               );
         
         string[] searchIconDirs;
-        if (basePathsStr.empty) {
+        if (baseDirs.empty) {
             version(OSX) {} else version(Posix) {
                 searchIconDirs = baseIconDirs();
             }
         } else {
-            searchIconDirs = basePathsStr.splitter(':').array;
+            searchIconDirs = baseDirs;
         }
         if (searchIconDirs.empty) {
             stderr.writeln("No icon theme directories given nor could be detected");
@@ -44,9 +44,10 @@ int main(string[] args)
             IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs, readOptions);
             if (iconTheme) {
                 iconThemes ~= iconTheme;
-            }
-            if(includeBase) {
-                iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, readOptions);
+                
+                if(includeBase) {
+                    iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, readOptions);
+                }
             }
         }
         if (includeHicolor) {
@@ -54,7 +55,11 @@ int main(string[] args)
         }
         
         foreach(item; lookupThemeIcons(iconThemes, searchIconDirs, extensions)) {
-            writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item[0], item[1].context, item[1].size, item[2].name);
+            if (item[2] is null) {
+                writefln("Icon file: %s. Context: %s. Size: %s", item[0], item[1].context, item[1].size);
+            } else {
+                writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item[0], item[1].context, item[1].size, item[2].name);
+            }
         }
         
         if (includeNonThemed) {

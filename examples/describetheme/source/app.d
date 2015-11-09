@@ -22,7 +22,13 @@ int main(string[] args)
             }
             iconTheme = new IconThemeFile(themePath, IconThemeFile.ReadOptions.ignoreGroupDuplicates);
         } else {
-            iconTheme = enforce(openIconTheme(themePath, baseIconDirs(), IconThemeFile.ReadOptions.ignoreGroupDuplicates), "Could not find theme");
+            version(OSX) {} else version(Posix) {
+                iconTheme = openIconTheme(themePath, baseIconDirs(), IconThemeFile.ReadOptions.ignoreGroupDuplicates);
+            }
+            if (!iconTheme) {
+                throw new Exception("Could not find theme");
+            }
+            
         }
         
         writeln("Path: ", iconTheme.fileName);
