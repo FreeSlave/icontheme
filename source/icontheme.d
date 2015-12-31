@@ -28,6 +28,16 @@ private
     import std.typecons;
     
     static if( __VERSION__ < 2066 ) enum nogc = 1;
+    
+    version(OSX) {
+        enum isFreedesktop = false;
+    } else version(Android) {
+        enum isFreedesktop = false;
+    } else version(Posix) {
+        enum isFreedesktop = true;
+    } else {
+        enum isFreedesktop = false;
+    }
 }
 
 
@@ -177,9 +187,9 @@ final class IconThemeFile : IniLikeFile
      * Throws:
      *  $(B IniLikeException) if error occured while parsing.
      */
-    @trusted this(Range)(Range byLine, ReadOptions options = ReadOptions.ignoreGroupDuplicates, string fileName = null) if(is(ElementType!Range : IniLikeLine))
+    @trusted this(IniLikeReader)(IniLikeReader reader, ReadOptions options = ReadOptions.ignoreGroupDuplicates, string fileName = null)
     {   
-        super(byLine, options, fileName);
+        super(reader, options, fileName);
         
          _iconTheme = group("Icon Theme");
          enforce(_iconTheme, new IniLikeException("No Icon Theme group", 0));
@@ -273,7 +283,7 @@ final class IconThemeFile : IniLikeFile
      * See_Also: joinValues
      */
     @trusted static auto splitValues(string values) {
-        return values.splitter(',').filter!(s => s.length != 0);
+        return std.algorithm.splitter(values, ',').filter!(s => s.length != 0);
     }
     
     /**
@@ -331,8 +341,56 @@ private:
     IniLikeGroup _iconTheme;
 }
 
+unittest
+{
+    assert(equal(IconThemeFile.splitValues("16x16/actions,16x16/animations,16x16/apps"), ["16x16/actions", "16x16/animations", "16x16/apps"]));
+    assert(IconThemeFile.splitValues(",").empty);
+    assert(equal(IconThemeFile.joinValues(["16x16/actions", "16x16/animations", "16x16/apps"]), "16x16/actions,16x16/animations,16x16/apps"));
+    assert(IconThemeFile.joinValues([""]).empty);
+    
+    string indexThemeContents =
+`[Icon Theme]
+Name=Hicolor
+Name[ru]=Стандартная тема
+Comment=Fallback icon theme
+Comment[ru]=Резервная тема
+Hidden=true
+Directories=16x16/actions,32x32/animations,scalable/emblems
+Example=folder
 
-version(OSX) {} else version(Posix) {
+[16x16/actions]
+Size=16
+Context=Actions
+Type=Threshold
+
+[32x32/animations]
+Size=32
+Context=Animations
+Type=Fixed
+
+[scalable/emblems]
+Context=Emblems
+Size=64
+MinSize=8
+MaxSize=512
+Type=Scalable`;
+
+    auto iconTheme = new IconThemeFile(iniLikeStringReader(indexThemeContents));
+    assert(iconTheme.name() == "Hicolor");
+    assert(iconTheme.localizedName("ru") == "Стандартная тема");
+    assert(iconTheme.comment() == "Fallback icon theme");
+    assert(iconTheme.localizedComment("ru") == "Резервная тема");
+    assert(iconTheme.hidden());
+    assert(equal(iconTheme.directories(), ["16x16/actions", "32x32/animations", "scalable/emblems"]));
+    assert(iconTheme.example() == "folder");
+    
+    assert(equal(iconTheme.bySubdir().map!(subdir => tuple(subdir.size(), subdir.minSize(), subdir.maxSize(), subdir.context(), subdir.type() )), 
+                 [tuple(16, 16, 16, "Actions", IconSubDir.Type.Threshold), 
+                 tuple(32, 32, 32, "Animations", IconSubDir.Type.Fixed), 
+                 tuple(64, 8, 512, "Emblems", IconSubDir.Type.Scalable)]));
+}
+
+static if (isFreedesktop) {
     /**
     * The set of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification). Available only on freedesktop systems.
     * Note: This function does not provide any caching of its results. This function does not check if directories exist.
@@ -341,7 +399,7 @@ version(OSX) {} else version(Posix) {
     {
         @trusted static string[] getDataDirs() nothrow {
             string[] dataDirs;
-            collectException(environment.get("XDG_DATA_DIRS").splitter(":").map!(s => buildPath(s, "icons")).array, dataDirs);
+            collectException(std.algorithm.splitter(environment.get("XDG_DATA_DIRS"), ":").map!(s => buildPath(s, "icons")).array, dataDirs);
             return dataDirs.empty ? ["/usr/local/share/icons", "/usr/share/icons"] : dataDirs;
         }
         
@@ -860,53 +918,4 @@ if(isForwardRange!Range && is(ElementType!Range : string))
     IconThemeFile[] themes;
     openBaseThemesHelper(themes, iconTheme, searchIconDirs, options);
     return themes;
-}
-
-unittest
-{
-    assert(equal(IconThemeFile.splitValues("16x16/actions,16x16/animations,16x16/apps"), ["16x16/actions", "16x16/animations", "16x16/apps"]));
-    assert(IconThemeFile.splitValues(",").empty);
-    assert(equal(IconThemeFile.joinValues(["16x16/actions", "16x16/animations", "16x16/apps"]), "16x16/actions,16x16/animations,16x16/apps"));
-    assert(IconThemeFile.joinValues([""]).empty);
-    
-    string indexThemeContents =
-`[Icon Theme]
-Name=Hicolor
-Name[ru]=Стандартная тема
-Comment=Fallback icon theme
-Comment[ru]=Резервная тема
-Hidden=true
-Directories=16x16/actions,32x32/animations,scalable/emblems
-Example=folder
-
-[16x16/actions]
-Size=16
-Context=Actions
-Type=Threshold
-
-[32x32/animations]
-Size=32
-Context=Animations
-Type=Fixed
-
-[scalable/emblems]
-Context=Emblems
-Size=64
-MinSize=8
-MaxSize=512
-Type=Scalable`;
-
-    auto iconTheme = new IconThemeFile(iniLikeStringReader(indexThemeContents));
-    assert(iconTheme.name() == "Hicolor");
-    assert(iconTheme.localizedName("ru") == "Стандартная тема");
-    assert(iconTheme.comment() == "Fallback icon theme");
-    assert(iconTheme.localizedComment("ru") == "Резервная тема");
-    assert(iconTheme.hidden());
-    assert(equal(iconTheme.directories(), ["16x16/actions", "32x32/animations", "scalable/emblems"]));
-    assert(iconTheme.example() == "folder");
-    
-    assert(equal(iconTheme.bySubdir().map!(subdir => tuple(subdir.size(), subdir.minSize(), subdir.maxSize(), subdir.context(), subdir.type() )), 
-                 [tuple(16, 16, 16, "Actions", IconSubDir.Type.Threshold), 
-                 tuple(32, 32, 32, "Animations", IconSubDir.Type.Fixed), 
-                 tuple(64, 8, 512, "Emblems", IconSubDir.Type.Scalable)]));
 }
