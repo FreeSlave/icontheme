@@ -1,12 +1,12 @@
 /**
  * Authors: 
- *  $(LINK2 https://github.com/MyLittleRobo, Roman Chistokhodov).
+ *  $(LINK2 https://github.com/MyLittleRobo, Roman Chistokhodov)
  * Copyright:
  *  Roman Chistokhodov, 2015
  * License: 
  *  $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * See_Also: 
- *  $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html, Icon Theme Specification).
+ *  $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html, Icon Theme Specification)
  */
 
 module icontheme;
@@ -286,6 +286,13 @@ final class IconThemeFile : IniLikeFile
         return std.algorithm.splitter(values, ',').filter!(s => s.length != 0);
     }
     
+    ///
+    unittest
+    {
+        assert(equal(IconThemeFile.splitValues("16x16/actions,16x16/animations,16x16/apps"), ["16x16/actions", "16x16/animations", "16x16/apps"]));
+        assert(IconThemeFile.splitValues(",").empty);
+    }
+    
     /**
      * Join range of multiple values into a string using comma as separator.
      * If range is empty, then the empty string is returned.
@@ -298,6 +305,13 @@ final class IconThemeFile : IniLikeFile
         } else {
             return text(result);
         }
+    }
+    
+    ///
+    unittest
+    {
+        assert(equal(IconThemeFile.joinValues(["16x16/actions", "16x16/animations", "16x16/apps"]), "16x16/actions,16x16/animations,16x16/apps"));
+        assert(IconThemeFile.joinValues([""]).empty);
     }
     
     /**
@@ -341,13 +355,9 @@ private:
     IniLikeGroup _iconTheme;
 }
 
+///
 unittest
 {
-    assert(equal(IconThemeFile.splitValues("16x16/actions,16x16/animations,16x16/apps"), ["16x16/actions", "16x16/animations", "16x16/apps"]));
-    assert(IconThemeFile.splitValues(",").empty);
-    assert(equal(IconThemeFile.joinValues(["16x16/actions", "16x16/animations", "16x16/apps"]), "16x16/actions,16x16/animations,16x16/apps"));
-    assert(IconThemeFile.joinValues([""]).empty);
-    
     string indexThemeContents =
 `[Icon Theme]
 Name=Hicolor

@@ -12,3 +12,10 @@ matrix:
         - d: gdc-4.8.2
         - d: ldc-0.14.0
         
+install:
+    - wget -O doveralls "https://github.com/ColdenCullen/doveralls/releases/download/v1.1.6/doveralls_linux_travis"
+    - chmod +x doveralls
+  
+script:
+    - dub test -b unittest-cov --compiler=${DC}
+    - ./doveralls
