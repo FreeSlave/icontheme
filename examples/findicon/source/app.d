@@ -10,12 +10,14 @@ int main(string[] args)
     uint size;
     string[] baseDirs;
     string extensionsStr;
+    bool useCache;
     
     try {
         getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
                "size", "Preferred size of icon. If not set it will look for biggest icon.", &size,
-              "baseDir", "Base icon path to search themes. This option can be repeated to specify multiple paths.", &baseDirs,
-              "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr
+               "baseDir", "Base icon path to search themes. This option can be repeated to specify multiple paths.", &baseDirs,
+               "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr,
+               "useCache", "Use icon theme cache when possible", &useCache
               );
         
         if (args.length < 2) {
@@ -39,7 +41,6 @@ int main(string[] args)
         }
         
         string[] extensions = extensionsStr.empty ? [".png", ".xpm"] : extensionsStr.splitter(':').array;
-        auto readOptions = IconThemeFile.ReadOptions.ignoreGroupDuplicates;
         
         
         debug writefln("Using directories: %-(%s, %)", searchIconDirs);
@@ -47,19 +48,27 @@ int main(string[] args)
         
         IconThemeFile[] iconThemes;
         if (theme.length) {
-            IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs, readOptions);
+            IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs);
             if (iconTheme) {
                 iconThemes ~= iconTheme;
-                iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, readOptions);
+                iconThemes ~= openBaseThemes(iconTheme, searchIconDirs);
+            }
+        } else {
+            IconThemeFile fallbackTheme = openIconTheme("hicolor", searchIconDirs);
+            if (fallbackTheme) {
+                iconThemes ~= fallbackTheme;
             }
         }
         
-        auto hicolorFound = iconThemes.filter!(theme => theme !is null).find!(theme => theme.internalName == "hicolor");
-        if (hicolorFound.empty) {
-            iconThemes ~= openIconTheme("hicolor", searchIconDirs, readOptions);
-        }
-        
         debug writeln("Using icon theme files: ", iconThemes.map!(iconTheme => iconTheme.fileName()));
+        
+        if (useCache) {
+            foreach(iconTheme; iconThemes) {
+                if (iconTheme.tryLoadCache()) {
+                    debug writeln("Using icon theme cache for ", iconTheme.internalName());
+                }
+            }
+        }
         
         string iconPath;
         if (size) {

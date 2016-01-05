@@ -11,7 +11,7 @@ int main(string[] args)
     bool verbose;
     
     try {
-        getopt(args, "verbose", "Print name of each examined index.theme file to standard output", &verbose);
+        getopt(args, "verbose", "Print name of each examined file to standard output", &verbose);
     } catch(Exception e) {
         stderr.writeln(e.msg);
         return 1;
@@ -46,17 +46,38 @@ int main(string[] args)
     
     debug writefln("Using directories: %-(%s, %)", searchIconDirs);
     foreach(path; iconThemePaths(searchIconDirs)) {
+        
+        IconThemeFile theme;
+        string cachePath;
         if (verbose) {
-            writeln(path);
+            writeln("Reading icon theme file: ", path);
         }
         try {
-            new IconThemeFile(path, IconThemeFile.ReadOptions.ignoreGroupDuplicates);
+            theme = new IconThemeFile(path, IconThemeFile.ReadOptions.ignoreGroupDuplicates);
         }
         catch(IniLikeException e) {
             stderr.writefln("Error reading %s: at %s: %s", path, e.lineNumber, e.msg);
         }
         catch(Exception e) {
             stderr.writefln("Error reading %s: %s", path, e.msg);
+        }
+        
+        try {
+            if (theme) {
+                cachePath = theme.cachePath;
+                if (cachePath.exists) {
+                    if (verbose) {
+                        writeln("Reading icon theme cache: ", cachePath);
+                    }
+                    auto cache = new IconThemeCache(cachePath);
+                }
+            }
+        }
+        catch(IconThemeCacheException e) {
+            stderr.writeln("Error parsing cache file %s: %s", cachePath, e.msg);
+        }
+        catch(Exception e) {
+            stderr.writefln("Error reading %s: %s", cachePath, e.msg);
         }
     }
     

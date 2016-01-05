@@ -38,6 +38,7 @@ int main(string[] args)
         writeln("Is hidden: ", iconTheme.hidden);
         writeln("Subdirectories: ", iconTheme.directories);
         writeln("Inherits: ", iconTheme.inherits());
+        writeln("Example: ", iconTheme.example());
     }
     catch(Exception e) {
         stderr.writefln("Error occured: %s", e.msg);

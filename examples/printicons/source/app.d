@@ -1,8 +1,9 @@
-import std.stdio;
-import std.getopt;
-import icontheme;
 import std.algorithm;
 import std.array;
+import std.getopt;
+import std.stdio;
+
+import icontheme;
 
 int main(string[] args)
 {
@@ -37,21 +38,25 @@ int main(string[] args)
         }
         
         string[] extensions = extensionsStr.empty ? [".png", ".xpm"] : extensionsStr.splitter(':').array;
-        auto readOptions = IconThemeFile.ReadOptions.ignoreGroupDuplicates;
         
         IconThemeFile[] iconThemes;
         if (theme.length) {
-            IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs, readOptions);
+            IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs);
             if (iconTheme) {
                 iconThemes ~= iconTheme;
                 
                 if(includeBase) {
-                    iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, readOptions);
+                    string fallbackThemeName = includeHicolor ? "hicolor" : string.init;
+                    iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, fallbackThemeName);
                 }
             }
-        }
-        if (includeHicolor) {
-            iconThemes ~= openIconTheme("hicolor", searchIconDirs, readOptions);
+        } else {
+            if (includeHicolor) {
+                IconThemeFile fallbackTheme = openIconTheme("hicolor", searchIconDirs);
+                if (fallbackTheme) {
+                    iconThemes ~= fallbackTheme;
+                }
+            }
         }
         
         foreach(item; lookupThemeIcons(iconThemes, searchIconDirs, extensions)) {
