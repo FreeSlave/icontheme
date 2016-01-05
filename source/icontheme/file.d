@@ -228,6 +228,7 @@ final class IconThemeFile : IniLikeFile
     /**
      * Short name of the icon theme, used in e.g. lists when selecting themes.
      * Returns: The value associated with "Name" key.
+     * See_Also: internalName, localizedName
      */
     @nogc @safe string name() const nothrow {
         return value("Name");
@@ -237,7 +238,10 @@ final class IconThemeFile : IniLikeFile
         return localizedValue("Name", locale);
     }
     
-    ///The name of the subdirectory index.theme was loaded from.
+    /** 
+     * The name of the subdirectory index.theme was loaded from.
+     * See_Also: name
+     */
     @trusted string internalName() const {
         return fileName().absolutePath().dirName().baseName();
     }
@@ -319,7 +323,7 @@ final class IconThemeFile : IniLikeFile
     /**
      * Names of themes that this theme inherits from.
      * Returns: The range of multiple values associated with "Inherits" key.
-     * Note: It does $(B NOT) automatically adds hicolor theme if it's missing.
+     * Note: It does NOT automatically adds hicolor theme if it's missing.
      */
     @safe auto inherits() const {
         return splitValues(value("Inherits"));
@@ -347,9 +351,10 @@ final class IconThemeFile : IniLikeFile
     alias iconTheme this;
     
     /**
-     * Try to load icon cache.
+     * Try to load icon cache. Loaded icon cache will be used on icon lookup.
      * Returns: Loaded IconThemeCache object or null, if cache does not exist or invalid or outdated.
-     * See_Also: icontheme.cache.IconThemeCache.
+     * Note: This function expects that icon theme has fileName.
+     * See_Also: icontheme.cache.IconThemeCache, icontheme.lookup.lookupIcon, cache, unloadCache, cachePath
      */
     @trusted auto tryLoadCache() nothrow
     {
@@ -382,6 +387,7 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * Set cache object.
+     * See_Also: tryLoadCache, iconTheme.lookup.lookupIcons
      */
     @nogc @safe IconThemeCache cache(IconThemeCache setCache) nothrow {
         _cache = setCache;
@@ -398,9 +404,8 @@ final class IconThemeFile : IniLikeFile
     
     /**
      * Path of icon theme cache file.
-     * This function expects that icon theme has fileName.
      * Returns: Path to icon-theme.cache of corresponding cache file.
-     * Note: This function does not check if the cache file exists.
+     * Note: This function expects that icon theme has fileName. This function does not check if the cache file exists.
      */
     @trusted string cachePath() const nothrow {
         return buildPath(fileName().dirName, "icon-theme.cache");

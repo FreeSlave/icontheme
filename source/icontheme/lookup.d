@@ -131,7 +131,7 @@ if (isForwardRange!(Exts) && is(ElementType!Exts : string) && is(IconTheme : con
 }
 
 /**
- * Lookup icon alternatives in icon themes using icon theme cache if some IconThemeFile has it. If searched icon is found in some icon theme all subsequent themes are ignored.
+ * Lookup icon alternatives in icon themes. It uses icon theme cache wherever possible. If searched icon is found in some icon theme all subsequent themes are ignored.
  * Use subdirFilter to filter icons by IconSubDir to decrease the number of searchable items and allocations.
  * Returns: Range of triple tuples of found icon file path, corresponding icontheme.file.IconSubDir and icontheme.file.IconThemeFile.
  * Params:
@@ -274,7 +274,7 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 }
 
 /**
- * Find icon of the closest size. The first perfect match is used. If could not find icon in icon themes, uses the first found non-themed fallback.
+ * Find icon of the closest size. It uses icon theme cache wherever possible. The first perfect match is used. If could not find icon in icon themes, uses the first found non-themed fallback.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with closer size. Therefore the icon found in the more preferred theme always has presedence over icons from other themes.
  * See_Also: icontheme.paths.baseIconDirs, lookupIcon, lookupFallbackIcon
  */
@@ -319,7 +319,7 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 
 
 /**
- * Find icon of the largest size. If could not find icon in icon themes, uses the first found non-themed fallback.
+ * Find icon of the largest size. It uses icon theme cache wherever possible. If could not find icon in icon themes, uses the first found non-themed fallback.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with larger size. Therefore the icon found in the most preferred theme always has presedence over icons from other themes.
  * See_Also: icontheme.paths.baseIconDirs, lookupIcon, lookupFallbackIcon
  */
