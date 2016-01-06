@@ -447,7 +447,7 @@ MinSize=8
 MaxSize=512
 Type=Scalable`;
 
-    string path = "./test/index.theme";
+    string path = buildPath(".", "test", "index.theme");
 
     auto iconTheme = new IconThemeFile(iniLikeStringReader(indexThemeContents), path);
     assert(iconTheme.name() == "Hicolor");
@@ -460,7 +460,10 @@ Type=Scalable`;
     assert(iconTheme.internalName() == "test");
     assert(iconTheme.example() == "folder");
     
-    assert(iconTheme.cachePath() == "./test/icon-theme.cache");
+    iconTheme.removeGroup("Icon Theme");
+    assert(iconTheme.group("Icon Theme") !is null);
+    
+    assert(iconTheme.cachePath() == buildPath(".", "test", "icon-theme.cache"));
     
     assert(equal(iconTheme.bySubdir().map!(subdir => tuple(subdir.name(), subdir.size(), subdir.minSize(), subdir.maxSize(), subdir.context(), subdir.type() )), 
                  [tuple("16x16/actions", 16, 16, 16, "Actions", IconSubDir.Type.Threshold), 
@@ -474,7 +477,7 @@ Type=Scalable`;
     
     assert(iconTheme.cache is null);
     iconTheme.cache = cache;
-    assert(iconTheme.cache !is null);
+    assert(iconTheme.cache is cache);
     iconTheme.unloadCache();
     assert(iconTheme.cache is null);
     
