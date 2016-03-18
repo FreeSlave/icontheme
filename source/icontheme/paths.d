@@ -40,7 +40,7 @@ static if (isFreedesktop) {
         if (homePath.length) {
             toReturn ~= buildPath(homePath, ".icons");
         }
-        toReturn ~= xdgDataDirs("icons");
+        toReturn ~= xdgDataAllDirs("icons");
         toReturn ~= "/usr/share/pixmaps";
         return toReturn;
     }
