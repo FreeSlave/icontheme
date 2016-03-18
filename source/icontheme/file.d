@@ -408,7 +408,12 @@ final class IconThemeFile : IniLikeFile
      * Note: This function expects that icon theme has fileName. This function does not check if the cache file exists.
      */
     @trusted string cachePath() const nothrow {
-        return buildPath(fileName().dirName, "icon-theme.cache");
+        auto f = fileName();
+        if (f.length) {
+            return buildPath(fileName().dirName, "icon-theme.cache");
+        } else {
+            return null;
+        }
     }
     
 private:

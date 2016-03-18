@@ -22,15 +22,8 @@ private {
     import std.range;
     import std.traits;
 
-    version(OSX) {
-        enum isFreedesktop = false;
-    } else version(Android) {
-        enum isFreedesktop = false;
-    } else version(Posix) {
-        enum isFreedesktop = true;
-    } else {
-        enum isFreedesktop = false;
-    }
+    import isfreedesktop;
+    import xdgpaths;
 }
 
 
@@ -41,50 +34,15 @@ static if (isFreedesktop) {
     */
     @safe string[] baseIconDirs() nothrow
     {
-        @trusted static string[] getDataDirs() nothrow {
-            string[] dataDirs;
-            collectException(std.algorithm.splitter(environment.get("XDG_DATA_DIRS"), ":").map!(s => buildPath(s, "icons")).array, dataDirs);
-            return dataDirs.empty ? ["/usr/local/share/icons", "/usr/share/icons"] : dataDirs;
-        }
-        
         string[] toReturn;
         string homePath;
         collectException(environment.get("HOME"), homePath);
         if (homePath.length) {
             toReturn ~= buildPath(homePath, ".icons");
         }
-        
-        string dataHome;
-        collectException(environment.get("XDG_DATA_HOME"), dataHome);
-        if (dataHome.length) {
-            toReturn ~= buildPath(dataHome, "icons");
-        } else if (homePath.length) {
-            toReturn ~= buildPath(homePath, ".local/share/icons");
-        }
-        
-        toReturn ~= getDataDirs();
+        toReturn ~= xdgDataDirs("icons");
         toReturn ~= "/usr/share/pixmaps";
         return toReturn;
-    }
-    
-    ///
-    unittest
-    {
-        try {
-            environment["XDG_DATA_DIRS"] = "/myuser/share:/myuser/share/local";
-            environment["XDG_DATA_HOME"] = "/home/myuser/share";
-            
-            auto r = baseIconDirs();
-            
-            if (environment.get("HOME").length) {
-                r.popFront();
-            }
-            assert(equal(r, ["/home/myuser/share/icons", "/myuser/share/icons", "/myuser/share/local/icons", "/usr/share/pixmaps"]));
-        }
-        catch (Exception e) {
-            import std.stdio;
-            stderr.writeln("environment error in unittest", e.msg);
-        }
     }
 }
 

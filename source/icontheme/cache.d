@@ -144,14 +144,14 @@ final class IconThemeCache
     /**
      * Test if icon is listed in cache.
      */
-    @trusted bool containsIcon(const(char)[] iconName)
+    @trusted bool containsIcon(const(char)[] iconName) const
     {
         IconInfo info;
         return findIconInfo(info, iconName);
     }
     
     /**
-     * Test if icon is listed in cache and belonds to specified subdirectory.
+     * Test if icon is listed in cache and belongs to specified subdirectory.
      */
     @trusted bool containsIcon(const(char)[] iconName, const(char)[] directory) const {
         auto index = iconDirectories(iconName).countUntil(directory);
@@ -198,7 +198,7 @@ final class IconThemeCache
     static @trusted bool isOutdated(string fileName)
     {
         if (fileName.empty) {
-            throw new Exception("File name is empty, can't check if the cache is outdated");
+            throw new FileException("File name is empty, can't check if the cache is outdated");
         }
         
         SysTime pathAccessTime, pathModificationTime;
@@ -214,7 +214,7 @@ final class IconThemeCache
      * All icon names listed in cache.
      * Returns: Range of icon const(char)[] names listed in cache.
      */
-    @trusted auto icons() {
+    @trusted auto icons() const {
         return iconInfos().map!(info => info.name);
     }
     
@@ -230,23 +230,25 @@ private:
         uint directoryListOffset;
     }
     
-    @trusted auto iconInfos() {
+    @trusted auto iconInfos() const {
+        import std.typecons;
+        
         static struct IconInfos
         {
-            this(IconThemeCache cache)
+            this(const(IconThemeCache) cache)
             {
-                _cache = cache;
-                _iconInfos = cache.bucketIconInfos();
+                _cache = rebindable(cache);
+                _iconInfos = _cache.bucketIconInfos();
                 _chainOffset = _iconInfos.front().chainOffset;
                 _fromChain = false;
             }
             
-            bool empty()
+            bool empty() 
             {
                 return _iconInfos.empty;
             }
             
-            auto front()
+            auto front() 
             {
                 if (_fromChain) {
                     auto info = _cache.iconInfo(_chainOffset);
@@ -278,22 +280,22 @@ private:
                 }
             }
             
-            auto save() {
+            auto save() const {
                 return this;
             }
             
             uint _chainOffset;
             bool _fromChain;
             typeof(_cache.bucketIconInfos()) _iconInfos;
-            IconThemeCache _cache;
+            Rebindable!(const(IconThemeCache)) _cache;
         }
         
         return IconInfos(this);
     }
     
-    @nogc @trusted static uint iconNameHash(const(char)[] iconName)
+    @nogc @trusted static uint iconNameHash(const(char)[] iconName) pure nothrow
     {
-        if (iconName.empty) {
+        if (iconName.length == 0) {
             return 0;
         }
         
@@ -321,7 +323,7 @@ private:
         return false;
     }
     
-    @trusted auto bucketIconInfos() {
+    @trusted auto bucketIconInfos() const {
         return iconOffsets().filter!(offset => offset != 0xffffffff).map!(offset => iconInfo(offset));
     }
     
@@ -397,13 +399,17 @@ unittest
     string cachePath = "./test/icon-theme.cache";
     assert(cachePath.exists);
     
-    auto cache = new IconThemeCache(cachePath);
+    const(IconThemeCache) cache = new IconThemeCache(cachePath);
     assert(cache.fileName == cachePath);
     assert(cache.containsIcon("folder"));
     assert(cache.containsIcon("folder", "24x24/places"));
     assert(cache.containsIcon("edit-copy", "32x32/actions"));
     assert(cache.iconDirectories("text-x-generic").canFind("32x32/mimetypes"));
     assert(cache.directories().canFind("32x32/devices"));
+    
+    auto icons = cache.icons();
+    assert(icons.canFind("folder"));
+    assert(icons.canFind("text-x-generic"));
     
     try {
         SysTime pathAccessTime, pathModificationTime;
