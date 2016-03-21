@@ -2,6 +2,8 @@ import std.stdio;
 import std.path;
 import std.file;
 import std.exception;
+
+import isfreedesktop;
 import icontheme;
 
 int main(string[] args)
@@ -16,13 +18,13 @@ int main(string[] args)
     try {
         IconThemeFile iconTheme;
         
-        if (themePath.isAbsolute()) {
+        if (themePath.isAbsolute() && themePath.exists) {
             if (themePath.isDir) {
                 themePath = buildPath(themePath, "index.theme");
             }
             iconTheme = new IconThemeFile(themePath, IconThemeFile.ReadOptions.ignoreGroupDuplicates);
         } else {
-            version(OSX) {} else version(Posix) {
+            static if (isFreedesktop) {
                 iconTheme = openIconTheme(themePath, baseIconDirs(), IconThemeFile.ReadOptions.ignoreGroupDuplicates);
             }
             if (!iconTheme) {
@@ -33,7 +35,7 @@ int main(string[] args)
         
         writeln("Path: ", iconTheme.fileName);
         writeln("Internal name: ", iconTheme.internalName);
-        writeln("Name: ", iconTheme.name);
+        writeln("Name: ", iconTheme.displayName);
         writeln("Comment: ", iconTheme.comment);
         writeln("Is hidden: ", iconTheme.hidden);
         writeln("Subdirectories: ", iconTheme.directories);

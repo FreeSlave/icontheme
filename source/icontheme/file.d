@@ -156,94 +156,23 @@ private:
     string _name;
 }
 
-/**
- * Class representation of index.theme file containing an icon theme description.
- */
-final class IconThemeFile : IniLikeFile
+final class IconThemeGroup : IniLikeGroup
 {
-    alias IniLikeFile.ReadOptions ReadOptions;
-    
-    package enum defaultReadOptions = ReadOptions.ignoreGroupDuplicates;
-    
-    /**
-     * Reads icon theme from file.
-     * Throws:
-     *  $(B ErrnoException) if file could not be opened.
-     *  $(B IniLikeException) if error occured while reading the file.
-     */
-    @safe this(string fileName, ReadOptions options = defaultReadOptions) {
-        this(iniLikeFileReader(fileName), fileName, options);
-    }
-    
-    /**
-     * Reads icon theme file from range of $(B IniLikeLine)s.
-     * Throws:
-     *  $(B IniLikeException) if error occured while parsing.
-     */
-    @trusted this(IniLikeReader)(IniLikeReader reader, string fileName = null, ReadOptions options = defaultReadOptions)
-    {   
-        super(reader, options, fileName);
-        
-         _iconTheme = group("Icon Theme");
-         enforce(_iconTheme, new IniLikeException("No Icon Theme group", 0));
-    }
-    
-    /**
-     * Constructs IconThemeFile with empty "Icon Theme" group.
-     */
-    @safe this() {
-        addGroup("Icon Theme");
-    }
-    
-    ///
-    unittest
-    {
-        auto df = new IconThemeFile();
-        assert(df.iconTheme());
-        assert(df.directories().empty);
-    }
-    
-    /**
-     * Removes group by name. You can't remove "Icon Theme" group with this function.
-     */
-    @safe override void removeGroup(string groupName) nothrow {
-        if (groupName != "Icon Theme") {
-            super.removeGroup(groupName);
-        }
-    }
-    
-    /**
-     * Create new group using groupName.
-     */
-    @safe override IniLikeGroup addGroup(string groupName) {
-        if (!_iconTheme) {
-            enforce(groupName == "Icon Theme", "The first group must be Icon Theme");
-            _iconTheme = super.addGroup(groupName);
-            return _iconTheme;
-        } else {
-            return super.addGroup(groupName);
-        }
+    protected @nogc @safe this() nothrow {
+        super("Icon Theme");
     }
     
     /**
      * Short name of the icon theme, used in e.g. lists when selecting themes.
      * Returns: The value associated with "Name" key.
-     * See_Also: internalName, localizedName
+     * See_Also: IconThemeFile.internalName, localizedDisplayName
      */
-    @nogc @safe string name() const nothrow {
+    @nogc @safe string displayName() const nothrow {
         return value("Name");
     }
     ///Returns: Localized name of icon theme.
-    @safe string localizedName(string locale) const nothrow {
+    @safe string localizedDisplayName(string locale) const nothrow {
         return localizedValue("Name", locale);
-    }
-    
-    /** 
-     * The name of the subdirectory index.theme was loaded from.
-     * See_Also: name
-     */
-    @trusted string internalName() const {
-        return fileName().absolutePath().dirName().baseName();
     }
     
     /**
@@ -272,6 +201,178 @@ final class IconThemeFile : IniLikeFile
      */
     @nogc @safe string example() const nothrow {
         return value("Example");
+    }
+    
+    /**
+     * List of subdirectories for this theme.
+     * Returns: The range of multiple values associated with "Directories" key.
+     */
+    @safe auto directories() const {
+        return IconThemeFile.splitValues(value("Directories"));
+    }
+    
+    /**
+     * Names of themes that this theme inherits from.
+     * Returns: The range of multiple values associated with "Inherits" key.
+     * Note: It does NOT automatically adds hicolor theme if it's missing.
+     */
+    @safe auto inherits() const {
+        return IconThemeFile.splitValues(value("Inherits"));
+    }
+    
+protected:
+    @trusted override void validateKeyValue(string key, string value) const {
+        enforce(isValidKey(key), "key is invalid");
+    }
+}
+
+/**
+ * Class representation of index.theme file containing an icon theme description.
+ */
+final class IconThemeFile : IniLikeFile
+{
+    ///Flags to manage icon theme file reading
+    enum ReadOptions
+    {
+        noOptions = 0,              /// Read all groups, skip comments and empty lines, stop on any error.
+        preserveComments = 2,       /// Preserve comments and empty lines. Use this when you want to keep them across writing.
+        ignoreGroupDuplicates = 4,  /// Ignore group duplicates. The first found will be used.
+        ignoreInvalidKeys = 8,      /// Skip invalid keys during parsing.
+        ignoreKeyDuplicates = 16,   /// Ignore key duplicates. The first found will be used.
+        ignoreUnknownGroups = 32,   /// Don't throw on unknown groups. Still save them.
+        skipUnknownGroups = 64,     /// Don't save unknown groups. Use it with ignoreUnknownGroups.
+        skipExtensionGroups = 128   /// Skip groups started with X-.
+    }
+    
+    /**
+     * Default options for desktop file reading.
+     */
+    enum defaultReadOptions = ReadOptions.ignoreUnknownGroups | ReadOptions.skipUnknownGroups | ReadOptions.preserveComments;
+
+protected:
+    @trusted override void addCommentForGroup(string comment, IniLikeGroup currentGroup, string groupName)
+    {
+        if (currentGroup && (_options & ReadOptions.preserveComments)) {
+            currentGroup.addComment(comment);
+        }
+    }
+    
+    @trusted override void addKeyValueForGroup(string key, string value, IniLikeGroup currentGroup, string groupName)
+    {
+        if (currentGroup) {
+            if (!isValidKey(key) && (_options & ReadOptions.ignoreInvalidKeys)) {
+                return;
+            }
+            if (currentGroup.contains(key)) {
+                if (_options & ReadOptions.ignoreKeyDuplicates) {
+                    return;
+                } else {
+                    throw new Exception("key already exists");
+                }
+            }
+            currentGroup[key] = value;
+        }
+    }
+    
+    @trusted override IniLikeGroup createGroup(string groupName)
+    {
+        if (group(groupName) !is null) {
+            if (_options & ReadOptions.ignoreGroupDuplicates) {
+                return null;
+            } else {
+                throw new Exception("group already exists");
+            }
+        }
+        
+        if (groupName == "Icon Theme") {
+            _iconTheme = new IconThemeGroup();
+            return _iconTheme;
+        } else if (groupName.startsWith("X-")) {
+            if (_options & ReadOptions.skipExtensionGroups) {
+                return null;
+            } 
+            return createEmptyGroup(groupName);
+        } else if (groupName.pathSplitter.all!isValidFilename) {
+            return createEmptyGroup(groupName);
+        } else {
+            if (_options & ReadOptions.ignoreUnknownGroups) {
+                if (_options & ReadOptions.skipUnknownGroups) {
+                    return null;
+                } else {
+                    return createEmptyGroup(groupName);
+                }
+            } else {
+                throw new Exception("Invalid group name: must be valid path or start with 'X-'");
+            }
+        }
+        
+    }
+    
+public:
+    /**
+     * Reads icon theme from file.
+     * Throws:
+     *  $(B ErrnoException) if file could not be opened.
+     *  $(B IniLikeException) if error occured while reading the file.
+     */
+    @safe this(string fileName, ReadOptions options = defaultReadOptions) {
+        this(iniLikeFileReader(fileName), fileName, options);
+    }
+    
+    /**
+     * Reads icon theme file from range of $(B IniLikeLine)s.
+     * Throws:
+     *  $(B IniLikeException) if error occured while parsing.
+     */
+    @trusted this(IniLikeReader)(IniLikeReader reader, ReadOptions options = defaultReadOptions, string fileName = null)
+    {
+        _options = options;
+        super(reader, fileName);
+        enforce(_iconTheme !is null, new IniLikeException("No \"Icon Theme\" group", 0));
+    }
+    
+    @trusted this(IniLikeReader)(IniLikeReader reader, string fileName, ReadOptions options = defaultReadOptions)
+    {
+        this(reader, options, fileName);
+    }
+    
+    /**
+     * Constructs IconThemeFile with empty "Icon Theme" group.
+     */
+    @safe this() {
+        super();
+        addGroup("Icon Theme");
+    }
+    
+    ///
+    unittest
+    {
+        auto df = new IconThemeFile();
+        assert(df.iconTheme());
+        assert(df.directories().empty);
+    }
+    
+    /**
+     * Removes group by name. You can't remove "Icon Theme" group with this function.
+     */
+    @safe override void removeGroup(string groupName) nothrow {
+        if (groupName != "Icon Theme") {
+            super.removeGroup(groupName);
+        }
+    }
+    
+    @trusted override void addLeadingComment(string line) nothrow {
+        if (_options & ReadOptions.preserveComments) {
+            super.addLeadingComment(line);
+        }
+    }
+    
+    /** 
+     * The name of the subdirectory index.theme was loaded from.
+     * See_Also: IconThemeGroup.displayName
+     */
+    @trusted string internalName() const {
+        return fileName().absolutePath().dirName().baseName();
     }
     
     /**
@@ -313,24 +414,8 @@ final class IconThemeFile : IniLikeFile
     }
     
     /**
-     * List of subdirectories for this theme.
-     * Returns: The range of multiple values associated with "Directories" key.
-     */
-    @safe auto directories() const {
-        return splitValues(value("Directories"));
-    }
-    
-    /**
-     * Names of themes that this theme inherits from.
-     * Returns: The range of multiple values associated with "Inherits" key.
-     * Note: It does NOT automatically adds hicolor theme if it's missing.
-     */
-    @safe auto inherits() const {
-        return splitValues(value("Inherits"));
-    }
-    
-    /**
      * Iterating over subdirectories of icon theme.
+     * See_Also: IconThemeGroup.directories
      */
     @trusted auto bySubdir() const {
         return directories().filter!(dir => group(dir) !is null).map!(dir => IconSubDir(group(dir)));
@@ -341,7 +426,7 @@ final class IconThemeFile : IniLikeFile
      * Returns: Instance of "Icon Theme" group.
      * Note: Usually you don't need to call this function since you can rely on alias this.
      */
-    @nogc @safe inout(IniLikeGroup) iconTheme() nothrow inout {
+    @nogc @safe inout(IconThemeGroup) iconTheme() nothrow inout {
         return _iconTheme;
     }
     
@@ -350,32 +435,32 @@ final class IconThemeFile : IniLikeFile
      */
     alias iconTheme this;
     
+    
+    
     /**
      * Try to load icon cache. Loaded icon cache will be used on icon lookup.
      * Returns: Loaded IconThemeCache object or null, if cache does not exist or invalid or outdated.
      * Note: This function expects that icon theme has fileName.
      * See_Also: icontheme.cache.IconThemeCache, icontheme.lookup.lookupIcon, cache, unloadCache, cachePath
      */
-    @trusted auto tryLoadCache() nothrow
+    @trusted auto tryLoadCache(Flag!"allowOutdated" allowOutdated = Flag!"allowOutdated".no) nothrow
     {
         string path = cachePath();
         
         bool isOutdated = true;
         collectException(IconThemeCache.isOutdated(path), isOutdated);
         
-        if (isOutdated) {
+        if (isOutdated && !allowOutdated) {
             return null;
         }
         
         IconThemeCache myCache;
         collectException(new IconThemeCache(path), myCache);
         
-        if (myCache) {
+        if (myCache !is null) {
             _cache = myCache;
-            return _cache;
-        } else {
-            return null;
         }
+        return myCache;
     }
     
     /**
@@ -417,15 +502,17 @@ final class IconThemeFile : IniLikeFile
     }
     
 private:
-    IniLikeGroup _iconTheme;
+    ReadOptions _options;
+    IconThemeGroup _iconTheme;
     IconThemeCache _cache;
 }
 
 ///
 unittest
 {
-    string indexThemeContents =
-`[Icon Theme]
+    string contents =
+`# First comment
+[Icon Theme]
 Name=Hicolor
 Name[ru]=Стандартная тема
 Comment=Fallback icon theme
@@ -450,13 +537,19 @@ Context=Emblems
 Size=64
 MinSize=8
 MaxSize=512
-Type=Scalable`;
+Type=Scalable
+
+# Will not be saved.
+[X-NoName]
+Key=Value`;
 
     string path = buildPath(".", "test", "index.theme");
 
-    auto iconTheme = new IconThemeFile(iniLikeStringReader(indexThemeContents), path);
-    assert(iconTheme.name() == "Hicolor");
-    assert(iconTheme.localizedName("ru") == "Стандартная тема");
+    auto iconTheme = new IconThemeFile(iniLikeStringReader(contents), path, 
+                                       IconThemeFile.ReadOptions.skipExtensionGroups|IconThemeFile.ReadOptions.preserveComments);
+    assert(equal(iconTheme.leadingComments(), ["# First comment"]));
+    assert(iconTheme.displayName() == "Hicolor");
+    assert(iconTheme.localizedDisplayName("ru") == "Стандартная тема");
     assert(iconTheme.comment() == "Fallback icon theme");
     assert(iconTheme.localizedComment("ru") == "Резервная тема");
     assert(iconTheme.hidden());
@@ -464,6 +557,7 @@ Type=Scalable`;
     assert(equal(iconTheme.inherits(), ["gnome", "hicolor"]));
     assert(iconTheme.internalName() == "test");
     assert(iconTheme.example() == "folder");
+    assert(iconTheme.group("X-NoName") is null);
     
     iconTheme.removeGroup("Icon Theme");
     assert(iconTheme.group("Icon Theme") !is null);
@@ -486,5 +580,55 @@ Type=Scalable`;
     iconTheme.unloadCache();
     assert(iconTheme.cache is null);
     
-    //assert(iconTheme.tryLoadCache() !is null);
+    assert(iconTheme.tryLoadCache(Flag!"allowOutdated".yes));
+    
+    contents = 
+`[X-SomeGroup]
+Key=Value`;
+
+    auto thrown = collectException!IniLikeException(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
+    assert(thrown !is null);
+    assert(thrown.lineNumber == 0);
+    
+    contents = 
+`[Icon Theme]
+Valid=Key
+$=Invalid`;
+
+    assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
+    assertNotThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreInvalidKeys));
+    
+    contents = 
+`[Icon Theme]
+Key=Value1
+Key=Value2`;
+
+    assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
+    assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreKeyDuplicates));
+    assert(iconTheme.iconTheme().value("Key") == "Value1");
+    
+    contents = 
+`[Icon Theme]
+Name=Name
+[/invalidpath]
+Key=Value`;
+
+    assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
+    assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreUnknownGroups));
+    assert(iconTheme.cachePath().empty);
+    assert(iconTheme.group("/invalidpath") !is null);
+    
+    iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreUnknownGroups|IconThemeFile.ReadOptions.skipUnknownGroups);
+    assert(iconTheme.group("/invalidpath") is null);
+    
+    contents = 
+`[Icon Theme]
+Name=Name1
+[Icon Theme]
+Name=Name2`;
+    
+    assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
+    assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreGroupDuplicates));
+    
+    assert(iconTheme.iconTheme().value("Name") == "Name1");
 }

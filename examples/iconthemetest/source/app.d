@@ -3,6 +3,8 @@ import std.algorithm;
 import std.getopt;
 import std.file;
 import std.range;
+
+import isfreedesktop;
 import icontheme;
 
 int main(string[] args)
@@ -21,7 +23,7 @@ int main(string[] args)
     if (args.length > 1) {
         searchIconDirs = args[1..$];
     } else {
-        version(OSX) {} else version(Posix) {
+        static if (isFreedesktop) {
             searchIconDirs = baseIconDirs();
         } else version(Windows) {
             import std.process : environment;

@@ -1,8 +1,10 @@
 import std.stdio;
 import std.getopt;
-import icontheme;
 import std.algorithm;
 import std.array;
+
+import isfreedesktop;
+import icontheme;
 
 int main(string[] args)
 {
@@ -28,7 +30,7 @@ int main(string[] args)
         
         string[] searchIconDirs;
         if (baseDirs.empty) {
-            version(OSX) {} else version(Posix) {
+            static if (isFreedesktop) {
                 searchIconDirs = baseIconDirs();
             }
         } else {

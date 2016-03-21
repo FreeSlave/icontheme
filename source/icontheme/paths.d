@@ -44,6 +44,20 @@ static if (isFreedesktop) {
         toReturn ~= "/usr/share/pixmaps";
         return toReturn;
     }
+    
+    ///
+    unittest
+    {
+        auto homeGuard = EnvGuard("HOME");
+        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME");
+        auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS");
+        
+        environment["HOME"] = "/home/user";
+        environment["XDG_DATA_HOME"] = "/home/user/data";
+        environment["XDG_DATA_DIRS"] = "/usr/local/data:/usr/data";
+        
+        assert(baseIconDirs() == ["/home/user/.icons", "/home/user/data/icons", "/usr/local/data/icons", "/usr/data/icons", "/usr/share/pixmaps"]);
+    }
 }
 
 /**

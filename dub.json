@@ -2,10 +2,10 @@
     "name": "icontheme",
     "description": "Icon Theme Specification implementation",
     "license" : "BSL-1.0",
-    "copyright": "Copyright © 2015, Roman Chistokhodov",
+    "copyright": "Copyright © 2015-2016, Roman Chistokhodov",
     "authors": ["Roman Chistokhodov"],
     "dependencies": {
-        "inilike": "~>0.4.1",
+        "inilike": "~>0.5.0",
         "xdgpaths": "~>0.1.2"
     },
     "targetName" : "icontheme",

@@ -63,7 +63,7 @@ int main(string[] args)
             if (item[2] is null) {
                 writefln("Icon file: %s. Context: %s. Size: %s", item[0], item[1].context, item[1].size);
             } else {
-                writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item[0], item[1].context, item[1].size, item[2].name);
+                writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item[0], item[1].context, item[1].size, item[2].displayName);
             }
         }
         
