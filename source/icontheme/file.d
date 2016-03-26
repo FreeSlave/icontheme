@@ -250,6 +250,11 @@ final class IconThemeFile : IniLikeFile
     enum defaultReadOptions = ReadOptions.ignoreUnknownGroups | ReadOptions.skipUnknownGroups | ReadOptions.preserveComments;
 
 protected:
+    @trusted bool isDirectoryName(string groupName)
+    {
+        return groupName.pathSplitter.all!isValidFilename;
+    }
+    
     @trusted override void addCommentForGroup(string comment, IniLikeGroup currentGroup, string groupName)
     {
         if (currentGroup && (_options & ReadOptions.preserveComments)) {
@@ -260,7 +265,7 @@ protected:
     @trusted override void addKeyValueForGroup(string key, string value, IniLikeGroup currentGroup, string groupName)
     {
         if (currentGroup) {
-            if (!isValidKey(key) && (_options & ReadOptions.ignoreInvalidKeys)) {
+            if ((groupName == "Icon Theme" || isDirectoryName(groupName)) && !isValidKey(key) && (_options & ReadOptions.ignoreInvalidKeys)) {
                 return;
             }
             if (currentGroup.contains(key)) {
@@ -292,7 +297,7 @@ protected:
                 return null;
             } 
             return createEmptyGroup(groupName);
-        } else if (groupName.pathSplitter.all!isValidFilename) {
+        } else if (isDirectoryName(groupName)) {
             return createEmptyGroup(groupName);
         } else {
             if (_options & ReadOptions.ignoreUnknownGroups) {
@@ -329,6 +334,7 @@ public:
         _options = options;
         super(reader, fileName);
         enforce(_iconTheme !is null, new IniLikeException("No \"Icon Theme\" group", 0));
+        _options = ReadOptions.ignoreUnknownGroups | ReadOptions.preserveComments;
     }
     
     @trusted this(IniLikeReader)(IniLikeReader reader, string fileName, ReadOptions options = defaultReadOptions)
@@ -581,6 +587,16 @@ Key=Value`;
     assert(iconTheme.cache is null);
     
     assert(iconTheme.tryLoadCache(Flag!"allowOutdated".yes));
+    
+    contents = 
+`[Icon Theme]
+Name=Theme
+[/invalid group]
+$=StrangeKey`;
+
+    iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreUnknownGroups);
+    assert(iconTheme.group("/invalid group") !is null);
+    assert(iconTheme.group("/invalid group").value("$") == "StrangeKey");
     
     contents = 
 `[X-SomeGroup]
