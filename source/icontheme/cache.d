@@ -210,6 +210,11 @@ final class IconThemeCache
         return fileModificationTime < pathModificationTime;
     }
     
+    unittest
+    {
+        assertThrown!FileException(isOutdated(""));
+    }
+    
     /**
      * All icon names listed in cache.
      * Returns: Range of icon const(char)[] names listed in cache.
@@ -425,25 +430,20 @@ unittest
         // some environmental error, just ignore
     }
     
-    immutable(ubyte)[] data = [0,2,0,0];
-    IconThemeCacheException thrown = null;
     try {
-        new IconThemeCache(data, cachePath);
+        auto fileData = assumeUnique(std.file.read(cachePath));
+        assertNotThrown(new IconThemeCache(fileData, cachePath));
+    } catch(FileException e) {
+        
     }
-    catch(IconThemeCacheException e) {
-        thrown = e;
-        assert(thrown.context == "major version");
-    }
+    
+    immutable(ubyte)[] data = [0,2,0,0];
+    IconThemeCacheException thrown = collectException!IconThemeCacheException(new IconThemeCache(data, cachePath));
     assert(thrown !is null, "Invalid cache must throw");
+    assert(thrown.context == "major version");
     
     data = [0,1,0,1];
-    thrown = null;
-    try {
-        new IconThemeCache(data, cachePath);
-    }
-    catch(IconThemeCacheException e) {
-        thrown = e;
-        assert(thrown.context == "minor version");
-    }
+    thrown = collectException!IconThemeCacheException(new IconThemeCache(data, cachePath));
     assert(thrown !is null, "Invalid cache must throw");
+    assert(thrown.context == "minor version");
 }

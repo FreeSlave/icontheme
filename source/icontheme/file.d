@@ -588,6 +588,9 @@ Key=Value`;
     
     assert(iconTheme.tryLoadCache(Flag!"allowOutdated".yes));
     
+    iconTheme.removeGroup("scalable/emblems");
+    assert(iconTheme.group("scalable/emblems") is null);
+    
     contents = 
 `[Icon Theme]
 Name=Theme
