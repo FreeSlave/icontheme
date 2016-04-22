@@ -320,16 +320,16 @@ public:
      *  $(B ErrnoException) if file could not be opened.
      *  $(B IniLikeException) if error occured while reading the file.
      */
-    @safe this(string fileName, ReadOptions options = defaultReadOptions) {
+    @trusted this(string fileName, ReadOptions options = defaultReadOptions) {
         this(iniLikeFileReader(fileName), fileName, options);
     }
     
     /**
-     * Reads icon theme file from range of $(B IniLikeLine)s.
+     * Reads icon theme file from range of IniLikeReader, e.g. acquired from iniLikeFileReader or iniLikeStringReader.
      * Throws:
      *  $(B IniLikeException) if error occured while parsing.
      */
-    @trusted this(IniLikeReader)(IniLikeReader reader, ReadOptions options = defaultReadOptions, string fileName = null)
+    this(IniLikeReader)(IniLikeReader reader, ReadOptions options = defaultReadOptions, string fileName = null)
     {
         _options = options;
         super(reader, fileName);
@@ -337,7 +337,7 @@ public:
         _options = ReadOptions.ignoreUnknownGroups | ReadOptions.preserveComments;
     }
     
-    @trusted this(IniLikeReader)(IniLikeReader reader, string fileName, ReadOptions options = defaultReadOptions)
+    this(IniLikeReader)(IniLikeReader reader, string fileName, ReadOptions options = defaultReadOptions)
     {
         this(reader, options, fileName);
     }
@@ -403,7 +403,7 @@ public:
      * If range is empty, then the empty string is returned.
      * See_Also: splitValues
      */
-    @trusted static string joinValues(Range)(Range values) if (isInputRange!Range && isSomeString!(ElementType!Range)) {
+    static string joinValues(Range)(Range values) if (isInputRange!Range && isSomeString!(ElementType!Range)) {
         auto result = values.filter!( s => s.length != 0 ).joiner(",");
         if (result.empty) {
             return string.init;

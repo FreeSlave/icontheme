@@ -5,12 +5,12 @@
     "copyright": "Copyright © 2015-2016, Roman Chistokhodov",
     "authors": ["Roman Chistokhodov"],
     "dependencies": {
-        "inilike": "~>0.5.0",
-        "xdgpaths": "~>0.1.2"
+        "inilike": "~>0.6.2",
+        "xdgpaths": "~>0.2.1"
     },
     "targetName" : "icontheme",
     "targetPath" : "lib", 
     "targetType" : "library",
     
-    "subPackages" : ["./examples/iconthemetest", "./examples/findicon", "./examples/describetheme", "./examples/printicons"]
+    "subPackages" : ["./examples/test", "./examples/findicon", "./examples/describe", "./examples/print"]
 }

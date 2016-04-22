@@ -114,52 +114,52 @@ catch(IniLikeException e) { // Parsing error - found icon theme file is invalid 
 
 Prints the basic information about theme to stdout.
 
-    dub run icontheme:describetheme -- gnome
+    dub run :describe -- gnome
 
 You also can pass the absolute path to file:
 
-    dub run icontheme:describetheme -- /usr/share/icons/gnome/index.theme
+    dub run :describe -- /usr/share/icons/gnome/index.theme
 
 Or directory:
 
-    dub run icontheme:describetheme -- /usr/share/icons/gnome
+    dub run :describe -- /usr/share/icons/gnome
 
 ### [Icon theme test](examples/iconthemetest/source/app.d)
 
 Parses all found index.theme and icon-theme.cache files in base icon directories. Writes errors (if any) to stderr.
 Use this example to check if the icontheme library can parse all themes and theme caches on your system.
 
-    dub run icontheme:iconthemetest
+    dub run :test
 
 Run to print names of all examined index.theme and icon-theme.cache files to stdout:
 
-    dub run icontheme:iconthemetest -- --verbose
+    dub run :test -- --verbose
     
 ### [Find icon](examples/findicon/source/app.d)
 
 Utility that finds icon by its name.
 By default search only in hicolor theme:
 
-    dub run icontheme:findicon -- nautilus
+    dub run :findicon -- nautilus
 
 You can specify additional theme:
 
-    dub run icontheme:findicon -- --theme=gnome folder
+    dub run :findicon -- --theme=gnome folder
 
 And preferred size:
 
-    dub run icontheme:findicon -- --theme=gnome --size=32 folder
+    dub run :findicon -- --theme=gnome --size=32 folder
 
 Allow using cache:
 
-    dub run icontheme:findicon -- --theme=gnome edit-copy --useCache
+    dub run :findicon -- --theme=gnome edit-copy --useCache
 
 ### [Print icons](examples/printicons/source/app.d)
 
 Search icons in specified theme:
 
-    dub run icontheme:printicons -- --theme=gnome > result.txt
+    dub run :print -- --theme=gnome > result.txt
 
 Include hicolor theme, base themes and icons that don't belong to any theme:
 
-    dub run icontheme:printicons -- --include-nonthemed --include-hicolor --include-base --theme=Faenza > result.txt
+    dub run :print -- --include-nonthemed --include-hicolor --include-base --theme=Faenza > result.txt

@@ -1,10 +1,9 @@
 {
-    "name": "iconthemetest",
+    "name": "print",
     "description": "A minimal D application.",
     "copyright": "Copyright © 2015, freeslave",
     "authors": ["freeslave"],
     "targetPath" : "bin", 
     "targetType" : "executable", 
-    "targetName" : "iconthemetest", 
-    "dependencies" : {"icontheme":"*"}
+    "dependencies": {"icontheme":"*"}
 }
