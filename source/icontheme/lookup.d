@@ -1,6 +1,8 @@
 /**
  * Lookup of icon themes and icons.
  * 
+ * Note: All found icons are just paths. They are not verified to be valid images.
+ * 
  * Authors: 
  *  $(LINK2 https://github.com/MyLittleRobo, Roman Chistokhodov)
  * Copyright:
@@ -20,6 +22,7 @@ package {
     import std.path;
     import std.range;
     import std.traits;
+    import std.typecons;
 }
 
 /**
@@ -79,8 +82,8 @@ if(is(ElementType!Range : string))
  * Returns:
  *  Path to the first found index.theme file or null string if not found.
  * Params:
- *  themeName = theme name.
- *  searchIconDirs = base icon directories to search icon themes.
+ *  themeName = Theme name.
+ *  searchIconDirs = Base icon directories to search icon themes.
  * Returns:
  *  Path to the first found index.theme file corresponding to the given theme.
  * See_Also: icontheme.paths.baseIconDirs, lookupIconTheme
@@ -132,7 +135,9 @@ if (isForwardRange!(Exts) && is(ElementType!Exts : string) && is(IconTheme : con
 
 /**
  * Lookup icon alternatives in icon themes. It uses icon theme cache wherever possible. If searched icon is found in some icon theme all subsequent themes are ignored.
- * Use subdirFilter to filter icons by IconSubDir to decrease the number of searchable items and allocations.
+ * 
+ * This function may make nearly 2000 calls to stat in one call, so beware. Use subdirFilter to filter icons by IconSubDir properties (e.g. by size or context) to decrease the number of searchable items and allocations. You also may want to filter out nonexistent paths from searchIconDirs before passing it to this function. Loading IconThemeCache may drastically descrease the number of stats.
+ * 
  * Returns: Range of triple tuples of found icon file path, corresponding icontheme.file.IconSubDir and icontheme.file.IconThemeFile.
  * Params:
  *  iconName = icon name.
@@ -144,7 +149,7 @@ if (isForwardRange!(Exts) && is(ElementType!Exts : string) && is(IconTheme : con
 ----------
 foreach(item; lookupIcon!(subdir => subdir.context == "Places" && subdir.size >= 32)("folder", iconThemes, baseIconDirs(), [".png", ".xpm"]))
 {
-    writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item[0], item[1].context, item[1].size, item[2].name);
+    writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item[0], item[1].context, item[1].size, item[2].displayName);
 }
 ----------
  * See_Also: icontheme.paths.baseIconDirs, lookupFallbackIcon
@@ -274,11 +279,19 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 }
 
 /**
- * Find icon of the closest size. It uses icon theme cache wherever possible. The first perfect match is used. If could not find icon in icon themes, uses the first found non-themed fallback.
+ * Find icon closest of the size. It uses icon theme cache wherever possible. The first perfect match is used.
+ * Params:
+ *  iconName = Name of icon to search as defined by Icon Theme Specification (i.e. without path and extension parts).
+ *  size = Preferred icon size to get.
+ *  iconThemes = Range of icontheme.file.IconThemeFile objects.
+ *  searchIconDirs = Base icon directories.
+ *  extensions = Allowed file extensions.
+ *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes (non-themed icon can be any size).
+ * Returns: Icon file path or empty string if not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with closer size. Therefore the icon found in the more preferred theme always has presedence over icons from other themes.
- * See_Also: icontheme.paths.baseIconDirs, lookupIcon, lookupFallbackIcon
+ * See_Also: icontheme.paths.baseIconDirs, lookupIcon, findFallbackIcon
  */
-string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
 {
     uint minDistance = uint.max;
     uint iconDistance = minDistance;
@@ -310,7 +323,7 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
         }
     }
     
-    if (closest.empty) {
+    if (closest.empty && allowFallback) {
         return findFallbackIcon(iconName, searchIconDirs, extensions);
     } else {
         return closest;
@@ -319,11 +332,18 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
 
 
 /**
- * Find icon of the largest size. It uses icon theme cache wherever possible. If could not find icon in icon themes, uses the first found non-themed fallback.
+ * Find icon of the largest size. It uses icon theme cache wherever possible.
+ * Params:
+ *  iconName = Name of icon to search as defined by Icon Theme Specification (i.e. without path and extension parts).
+ *  iconThemes = Range of icontheme.file.IconThemeFile objects.
+ *  searchIconDirs = Base icon directories.
+ *  extensions = Allowed file extensions.
+ *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes.
+ * Returns: Icon file path or empty string if not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with larger size. Therefore the icon found in the most preferred theme always has presedence over icons from other themes.
- * See_Also: icontheme.paths.baseIconDirs, lookupIcon, lookupFallbackIcon
+ * See_Also: icontheme.paths.baseIconDirs, lookupIcon, findFallbackIcon
  */
-string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
 {
     uint max = 0;
     uint iconSize = max;
