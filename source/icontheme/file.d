@@ -32,7 +32,16 @@ package
 
 import icontheme.cache;
 
-public import inilike;
+public import inilike.file;
+import inilike.common;
+
+private @trusted string escapeIfNeeded(string value) pure {
+    if (value.needEscaping()) {
+        return value.replace("\r", `\r`).replace("\n", `\n`);
+    } else {
+        return value;
+    }
+}
 
 /**
  * Adapter of IniLikeGroup for easy access to icon subdirectory properties.
@@ -162,16 +171,27 @@ final class IconThemeGroup : IniLikeGroup
         super("Icon Theme");
     }
     
+    private @nogc @safe static string boolToString(bool b) nothrow pure {
+        return b ? "true" : "false";
+    }
+    
     /**
      * Short name of the icon theme, used in e.g. lists when selecting themes.
      * Returns: The value associated with "Name" key.
      * See_Also: IconThemeFile.internalName, localizedDisplayName
      */
-    @nogc @safe string displayName() const nothrow {
+    @nogc @safe string displayName() const nothrow pure {
         return value("Name");
     }
+    /**
+     * Set "Name" to name escaping the value if needed.
+     */
+    @safe string displayName(string name) {
+        return this["Name"] = escapeIfNeeded(name);
+    }
+    
     ///Returns: Localized name of icon theme.
-    @safe string localizedDisplayName(string locale) const nothrow {
+    @safe string localizedDisplayName(string locale) const nothrow pure {
         return localizedValue("Name", locale);
     }
     
@@ -179,11 +199,18 @@ final class IconThemeGroup : IniLikeGroup
      * Longer string describing the theme.
      * Returns: The value associated with "Comment" key.
      */
-    @nogc @safe string comment() const nothrow {
+    @nogc @safe string comment() const nothrow pure {
         return value("Comment");
     }
+    /**
+     * Set "Comment" to commentary escaping the value if needed.
+     */
+    @safe string comment(string commentary) {
+        return this["Comment"] = escapeIfNeeded(commentary);
+    }
+
     ///Returns: Localized comment.
-    @safe string localizedComment(string locale) const nothrow {
+    @safe string localizedComment(string locale) const nothrow pure {
         return localizedValue("Comment", locale);
     }
     
@@ -191,33 +218,52 @@ final class IconThemeGroup : IniLikeGroup
      * Whether to hide the theme in a theme selection user interface.
      * Returns: The value associated with "Hidden" key converted to bool using isTrue.
      */
-    @nogc @safe bool hidden() const nothrow {
+    @nogc @safe bool hidden() const nothrow pure {
         return isTrue(value("Hidden"));
+    }
+    ///setter
+    @safe bool hidden(bool hide) {
+        this["Hidden"] = boolToString(hide);
+        return hide;
     }
     
     /**
      * The name of an icon that should be used as an example of how this theme looks.
      * Returns: The value associated with "Example" key.
      */
-    @nogc @safe string example() const nothrow {
+    @nogc @safe string example() const nothrow pure {
         return value("Example");
+    }
+    /**
+     * Set "Example" to example escaping the value if needed.
+     */
+    @safe string example(string example) {
+        return this["Example"] = escapeIfNeeded(example);
     }
     
     /**
      * List of subdirectories for this theme.
-     * Returns: The range of multiple values associated with "Directories" key.
+     * Returns: The range of values associated with "Directories" key.
      */
     @safe auto directories() const {
         return IconThemeFile.splitValues(value("Directories"));
+    }    
+    ///setter
+    void directories(Range)(Range values) if (isInputRange!Range && isSomeString!(ElementType!Range)) {
+        this["Directories"] = IconThemeFile.joinValues(values).escapeIfNeeded();
     }
     
     /**
      * Names of themes that this theme inherits from.
-     * Returns: The range of multiple values associated with "Inherits" key.
+     * Returns: The range of values associated with "Inherits" key.
      * Note: It does NOT automatically adds hicolor theme if it's missing.
      */
     @safe auto inherits() const {
         return IconThemeFile.splitValues(value("Inherits"));
+    }
+    ///setter
+    void inherits(Range)(Range values) if (isInputRange!Range && isSomeString!(ElementType!Range)) {
+        this["Inherits"] = IconThemeFile.joinValues(values).escapeIfNeeded();
     }
     
 protected:
@@ -353,9 +399,9 @@ public:
     ///
     unittest
     {
-        auto df = new IconThemeFile();
-        assert(df.iconTheme());
-        assert(df.directories().empty);
+        auto itf = new IconThemeFile();
+        assert(itf.iconTheme());
+        assert(itf.directories().empty);
     }
     
     /**
@@ -367,7 +413,7 @@ public:
         }
     }
     
-    @trusted override void addLeadingComment(string line) nothrow {
+    @safe override void addLeadingComment(string line) nothrow {
         if (_options & ReadOptions.preserveComments) {
             super.addLeadingComment(line);
         }
@@ -424,7 +470,7 @@ public:
      * See_Also: IconThemeGroup.directories
      */
     @trusted auto bySubdir() const {
-        return directories().filter!(dir => group(dir) !is null).map!(dir => IconSubDir(group(dir)));
+        return directories().filter!(dir => group(dir) !is null).map!(dir => IconSubDir(group(dir))).array;
     }
     
     /**
@@ -650,4 +696,17 @@ Name=Name2`;
     assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreGroupDuplicates));
     
     assert(iconTheme.iconTheme().value("Name") == "Name1");
+    
+    
+    auto itf = new IconThemeFile();
+    itf.displayName = "Oxygen";
+    itf.comment = "Oxygen theme";
+    itf.hidden = true;
+    itf.directories = ["actions", "places"];
+    itf.inherits = ["locolor", "hicolor"];
+    assert(itf.displayName() == "Oxygen");
+    assert(itf.comment() == "Oxygen theme");
+    assert(itf.hidden());
+    assert(equal(itf.directories(), ["actions", "places"]));
+    assert(equal(itf.inherits(), ["locolor", "hicolor"]));
 }
