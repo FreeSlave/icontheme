@@ -294,32 +294,25 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
 {
     uint minDistance = uint.max;
-    uint iconDistance = minDistance;
     string closest;
     
     foreach(t; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
         if (!subdirFilter(subdir)) {
             return false;
         }
-        
-        uint distance = iconSizeDistance(subdir, size);
-        if (distance < minDistance) {
-            minDistance = distance;
-        }
-        return distance <= minDistance;
+        return iconSizeDistance(subdir, size) <= minDistance;
     })(iconName, iconThemes, searchIconDirs, extensions)) {
         auto path = t[0];
         auto subdir = t[1];
         auto theme = t[2];
         
         uint distance = iconSizeDistance(subdir, size);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closest = path;
+        }
         if (distance == 0) {
             return path;
-        }
-        
-        if (distance < iconDistance) {
-            iconDistance = minDistance;
-            closest = path;
         }
     }
     
@@ -346,15 +339,11 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
 string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
 {
     uint max = 0;
-    uint iconSize = max;
     string largest;
     
     foreach(t; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
         if (!subdirFilter(subdir)) {
             return false;
-        }
-        if (subdir.size() > max) {
-            max = subdir.size();
         }
         return subdir.size() >= max;
     })(iconName, iconThemes, searchIconDirs, extensions)) {
@@ -362,8 +351,8 @@ string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
         auto subdir = t[1];
         auto theme = t[2];
         
-        if (subdir.size() > iconSize) {
-            iconSize = max;
+        if (subdir.size() > max) {
+            max = subdir.size();
             largest = path;
         }
     }
