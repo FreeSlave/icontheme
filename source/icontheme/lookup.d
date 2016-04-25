@@ -161,36 +161,46 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
 {
     alias Tuple!(string, IconSubDir, ElementType!IconThemes) Tripplet;
     
-    return iconThemes
-        .filter!(iconTheme => iconTheme !is null)
-        .map!(iconTheme => 
-            iconTheme.bySubdir().filter!(subdirFilter).map!(delegate(subdir) {
-                if (iconTheme.cache !is null) {
-                    if (iconTheme.cache.containsIcon(iconName, subdir.name)) {
-                        auto subdirPath = buildPath(iconTheme.cache.fileName.dirName, subdir.name);
-                        auto r = withExtensions!Tripplet(extensions, iconName, subdirPath, subdir, iconTheme);
-                        
-                        InputRange!Tripplet iro = inputRangeObject(r);
-                        return iro;
-                    } else {
-                        auto r = withExtensions!Tripplet((string[]).init, iconName, string.init, subdir, iconTheme);
-                        InputRange!Tripplet iro = inputRangeObject(r);
-                        return iro;
-                    }
+    return iconThemes.map!(iconTheme => searchIconDirs.map!(dir => tuple(dir, iconTheme))).joiner.filter!(function(t) {
+        if (t[1] !is null) {
+            auto themeBaseDir = buildPath(t[0], t[1].internalName());
+            bool ok;
+            collectException(themeBaseDir.isDir, ok);
+            return ok;
+        }
+        return false;
+    }).map!(delegate(t) {
+        auto baseDir = t[0];
+        auto iconTheme = t[1];
+        return iconTheme.bySubdir().filter!(subdirFilter).map!(delegate(subdir) {
+            if (iconTheme.cache !is null) {
+                if (iconTheme.cache.containsIcon(iconName, subdir.name)) {
+                    auto subdirPath = buildPath(iconTheme.cache.fileName.dirName, subdir.name);
+                    auto r = withExtensions!Tripplet(extensions, iconName, subdirPath, subdir, iconTheme);
+                    
+                    InputRange!Tripplet iro = inputRangeObject(r);
+                    return iro;
                 } else {
-                    auto r = searchIconDirs.map!(delegate(basePath) {
-                        auto subdirPath = buildPath(basePath, iconTheme.internalName(), subdir.name);
-                        return subdirPath; 
-                    }).cache().filter!(function(subdirPath) {
-                        bool ok;
-                        collectException(subdirPath.isDir, ok);
-                        return ok;
-                    }).map!(subdirPath => withExtensions!Tripplet(extensions, iconName, subdirPath, subdir, iconTheme)).joiner;
+                    auto r = withExtensions!Tripplet((string[]).init, iconName, string.init, subdir, iconTheme);
                     InputRange!Tripplet iro = inputRangeObject(r);
                     return iro;
                 }
-            }).joiner
-        ).filter!(range => !range.empty).takeOne().joiner;
+            } else {
+                auto subdirPath = buildPath(baseDir, iconTheme.internalName(), subdir.name);
+                bool ok;
+                collectException(subdirPath.isDir, ok);
+                if (ok) {
+                    auto r = withExtensions!Tripplet(extensions, iconName, subdirPath, subdir, iconTheme);
+                    InputRange!Tripplet iro = inputRangeObject(r);
+                    return iro;
+                } else {
+                    auto r = withExtensions!Tripplet((string[]).init, iconName, string.init, subdir, iconTheme);
+                    InputRange!Tripplet iro = inputRangeObject(r);
+                    return iro;
+                }
+            }
+        }).joiner;
+    }).filter!(range => !range.empty).takeOne().joiner;
 }
 
 /**
