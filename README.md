@@ -145,6 +145,7 @@ By default search only in hicolor theme:
 You can specify additional theme:
 
     dub run :findicon -- --theme=gnome folder
+    dub run :findicon -- --theme=oxygen text-plain
 
 And preferred size:
 

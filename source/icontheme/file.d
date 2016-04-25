@@ -293,7 +293,7 @@ final class IconThemeFile : IniLikeFile
     /**
      * Default options for desktop file reading.
      */
-    enum defaultReadOptions = ReadOptions.ignoreUnknownGroups | ReadOptions.skipUnknownGroups | ReadOptions.preserveComments;
+    enum defaultReadOptions = ReadOptions.ignoreUnknownGroups | ReadOptions.skipUnknownGroups | ReadOptions.preserveComments | IconThemeFile.ReadOptions.ignoreGroupDuplicates;
 
 protected:
     @trusted bool isDirectoryName(string groupName)

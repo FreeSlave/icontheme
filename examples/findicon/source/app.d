@@ -2,6 +2,7 @@ import std.stdio;
 import std.getopt;
 import std.algorithm;
 import std.array;
+import std.typecons;
 
 import isfreedesktop;
 import icontheme;
@@ -13,18 +14,21 @@ int main(string[] args)
     string[] baseDirs;
     string extensionsStr;
     bool useCache;
+    auto allowFallbackFlag = Yes.allowFallbackIcon;
     
     try {
         getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
                "size", "Preferred size of icon. If not set it will look for biggest icon.", &size,
                "baseDir", "Base icon path to search themes. This option can be repeated to specify multiple paths.", &baseDirs,
                "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr,
-               "useCache", "Use icon theme cache when possible", &useCache
+               "useCache", "Use icon theme cache when possible", &useCache,
+               "allowFallback", "Allow non-themed fallback icon if could not find in themes", &allowFallbackFlag
               );
         
         if (args.length < 2) {
             throw new Exception("Icon is not set");
         }
+        
         
         string iconName = args[1];
         
@@ -74,9 +78,9 @@ int main(string[] args)
         
         string iconPath;
         if (size) {
-            iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions);
+            iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions, allowFallbackFlag);
         } else {
-            iconPath = findLargestIcon(iconName, iconThemes, searchIconDirs, extensions);
+            iconPath = findLargestIcon(iconName, iconThemes, searchIconDirs, extensions, allowFallbackFlag);
         }
         
         if (iconPath.length) {
