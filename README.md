@@ -115,6 +115,7 @@ catch(IniLikeException e) { // Parsing error - found icon theme file is invalid 
 Prints the basic information about theme to stdout.
 
     dub run :describe -- gnome
+    dub run :describe -- oxygen
 
 You also can pass the absolute path to file:
 

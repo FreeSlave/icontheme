@@ -136,7 +136,7 @@ if (isForwardRange!(Exts) && is(ElementType!Exts : string) && is(IconTheme : con
 /**
  * Lookup icon alternatives in icon themes. It uses icon theme cache wherever possible. If searched icon is found in some icon theme all subsequent themes are ignored.
  * 
- * This function may make nearly 2000 calls to stat in one call, so beware. Use subdirFilter to filter icons by IconSubDir properties (e.g. by size or context) to decrease the number of searchable items and allocations. You also may want to filter out nonexistent paths from searchIconDirs before passing it to this function. Loading IconThemeCache may drastically descrease the number of stats.
+ * This function may require nearly 2000 stat calls, so beware. Use subdirFilter to filter icons by IconSubDir properties (e.g. by size or context) to decrease the number of searchable items and allocations. Loading IconThemeCache may drastically descrease the number of stats.
  * 
  * Returns: Range of triple tuples of found icon file path, corresponding icontheme.file.IconSubDir and icontheme.file.IconThemeFile.
  * Params:
@@ -161,17 +161,16 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
 {
     alias Tuple!(string, IconSubDir, ElementType!IconThemes) Tripplet;
     
-    return iconThemes.map!(iconTheme => searchIconDirs.map!(dir => tuple(dir, iconTheme))).joiner.filter!(function(t) {
-        if (t[1] !is null) {
-            auto themeBaseDir = buildPath(t[0], t[1].internalName());
+    return iconThemes.filter!(iconTheme => iconTheme !is null && iconTheme.internalName().length != 0)
+    .map!(iconTheme => tuple(iconTheme, searchIconDirs.map!(dir => buildPath(dir, iconTheme.internalName()))
+        .filter!(function(themeBaseDir) {
             bool ok;
             collectException(themeBaseDir.isDir, ok);
             return ok;
-        }
-        return false;
-    }).map!(delegate(t) {
-        auto baseDir = t[0];
-        auto iconTheme = t[1];
+        }).array))
+    .cache().map!(delegate(t) {
+        auto iconTheme = t[0];
+        auto themeBaseDirs = t[1];
         return iconTheme.bySubdir().filter!(subdirFilter).map!(delegate(subdir) {
             if (iconTheme.cache !is null) {
                 if (iconTheme.cache.containsIcon(iconName, subdir.name)) {
@@ -186,18 +185,15 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
                     return iro;
                 }
             } else {
-                auto subdirPath = buildPath(baseDir, iconTheme.internalName(), subdir.name);
-                bool ok;
-                collectException(subdirPath.isDir, ok);
-                if (ok) {
-                    auto r = withExtensions!Tripplet(extensions, iconName, subdirPath, subdir, iconTheme);
-                    InputRange!Tripplet iro = inputRangeObject(r);
-                    return iro;
-                } else {
-                    auto r = withExtensions!Tripplet((string[]).init, iconName, string.init, subdir, iconTheme);
-                    InputRange!Tripplet iro = inputRangeObject(r);
-                    return iro;
-                }
+                auto r = themeBaseDirs.map!(delegate(themeBaseDir) {
+                    return buildPath(themeBaseDir, subdir.name);
+                }).cache().filter!(function(subdirPath) {
+                    bool ok;
+                    collectException(subdirPath.isDir, ok);
+                    return ok;
+                }).map!(subdirPath => withExtensions!Tripplet(extensions, iconName, subdirPath, subdir, iconTheme)).joiner;
+                InputRange!Tripplet iro = inputRangeObject(r);
+                return iro;
             }
         }).joiner;
     }).filter!(range => !range.empty).takeOne().joiner;

@@ -58,6 +58,25 @@ static if (isFreedesktop) {
         
         assert(baseIconDirs() == ["/home/user/.icons", "/home/user/data/icons", "/usr/local/data/icons", "/usr/data/icons", "/usr/share/pixmaps"]);
     }
+    
+    /**
+     * Writable base icon path. Depends on XDG_DATA_HOME, so this is $HOME/.local/share/icons rather than $HOME/.icons
+     * 
+     * This function is defined only on freedesktop systems.
+     * Note: it does not check if returned path exists and appears to be directory.
+     */
+    @safe string writableIconsPath() nothrow {
+        return xdgDataHome("icons");
+    }
+    
+    ///
+    unittest
+    {
+        import std.process : environment;
+        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME");
+        environment["XDG_DATA_HOME"] = "/home/user/data";
+        assert(writableIconsPath() == "/home/user/data/icons");
+    }
 }
 
 /**
