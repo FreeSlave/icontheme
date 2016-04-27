@@ -268,7 +268,9 @@ final class IconThemeGroup : IniLikeGroup
     
 protected:
     @trusted override void validateKeyValue(string key, string value) const {
-        enforce(isValidKey(key), "key is invalid");
+        if (!isValidKey(key)) {
+            throw new IniLikeEntryException("key is invalid", key, value);
+        }
     }
 }
 
@@ -318,7 +320,7 @@ protected:
                 if (_options & ReadOptions.ignoreKeyDuplicates) {
                     return;
                 } else {
-                    throw new Exception("key already exists");
+                    throw new Exception("key '" ~ key ~ "' already exists");
                 }
             }
             currentGroup[key] = value;
@@ -331,7 +333,7 @@ protected:
             if (_options & ReadOptions.ignoreGroupDuplicates) {
                 return null;
             } else {
-                throw new Exception("group already exists");
+                throw new Exception("group '" ~ groupName ~ "' already exists");
             }
         }
         
@@ -353,7 +355,7 @@ protected:
                     return createEmptyGroup(groupName);
                 }
             } else {
-                throw new Exception("Invalid group name: must be valid path or start with 'X-'");
+                throw new Exception("Invalid group name: '" ~ groupName ~ "' must be valid relative path or start with 'X-'");
             }
         }
         
