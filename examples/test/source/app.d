@@ -57,7 +57,7 @@ int main(string[] args)
         try {
             theme = new IconThemeFile(path, IconThemeFile.ReadOptions.noOptions);
         }
-        catch(IniLikeException e) {
+        catch(IniLikeReadException e) {
             stderr.writefln("Error reading %s: at %s: %s", path, e.lineNumber, e.msg);
         }
         catch(Exception e) {
