@@ -26,6 +26,27 @@ private {
     import xdgpaths;
 }
 
+version(unittest) {
+    package struct EnvGuard
+    {
+        this(string env) {
+            envVar = env;
+            envValue = environment.get(env);
+        }
+        
+        ~this() {
+            if (envValue is null) {
+                environment.remove(envVar);
+            } else {
+                environment[envVar] = envValue;
+            }
+        }
+        
+        string envVar;
+        string envValue;
+    }
+}
+
 
 static if (isFreedesktop) {
     /**

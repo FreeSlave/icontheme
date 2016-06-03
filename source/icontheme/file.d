@@ -255,7 +255,7 @@ final class IconThemeGroup : IniLikeGroup
     
 protected:
     @trusted override void validateKey(string key, string value) const {
-        if (!isValidKey(key)) {
+        if (!isValidDesktopFileKey(key)) {
             throw new IniLikeEntryException("key is invalid", groupName(), key, value);
         }
     }
@@ -266,88 +266,142 @@ protected:
  */
 final class IconThemeFile : IniLikeFile
 {
-    ///Flags to manage icon theme file reading
-    enum ReadOptions
+    ///Options to manage icon theme file reading
+    static struct IconThemeReadOptions
     {
-        noOptions = 0,              /// Read all groups, skip comments and empty lines, stop on any error.
-        preserveComments = 2,       /// Preserve comments and empty lines. Use this when you want to keep them across writing.
-        ignoreGroupDuplicates = 4,  /// Ignore group duplicates. The first found will be used.
-        ignoreInvalidKeys = 8,      /// Skip invalid keys during parsing.
-        ignoreKeyDuplicates = 16,   /// Ignore key duplicates. The first found will be used.
-        ignoreUnknownGroups = 32,   /// Don't throw on unknown groups. Still save them.
-        skipUnknownGroups = 64,     /// Don't save unknown groups. Use it with ignoreUnknownGroups.
-        skipExtensionGroups = 128   /// Skip groups started with X-.
+        ///Base $(B ReadOptions) of $(B IniLikeFile).
+        IniLikeFile.ReadOptions baseOptions = IniLikeFile.ReadOptions(
+            IniLikeFile.ReadOptions.DuplicatePolicy.preserve, 
+            IniLikeFile.ReadOptions.DuplicatePolicy.throwError,
+            IniLikeGroup.InvalidKeyPolicy.throwError, true);
+        
+        alias baseOptions this;
+        
+        /**
+         * Policy about reading extension groups (those start with 'X-').
+         */
+        enum ExtensionGroupPolicy : ubyte {
+            skip, ///Don't save extension groups.
+            preserve ///Save extension groups.
+        }
+        
+        /**
+         * Policy about reading groups with names which meaning is unknown, i.e. it's not extension nor relative directory path.
+         */
+        enum UnknownGroupPolicy : ubyte {
+            skip, ///Don't save unknown groups.
+            preserve, ///Save unknown groups.
+            throwError ///Throw error when unknown group is encountered.
+        }
+        
+        /**
+         * Set policy about unknown groups. By default they are skipped without errors.
+         * Note that all groups still need to be preserved if desktop file must be rewritten.
+         */
+        UnknownGroupPolicy unknownGroupPolicy = UnknownGroupPolicy.skip;
+        
+        /**
+         * Set policy about extension groups. By default they are all preserved. 
+         * Set it to skip if you're not willing to support any extensions in your applications.
+         * Note that all groups still need to be preserved if desktop file must be rewritten.
+         */
+        ExtensionGroupPolicy extensionGroupPolicy = ExtensionGroupPolicy.preserve;
     }
     
-    /**
-     * Default options for desktop file reading.
-     */
-    enum defaultReadOptions = ReadOptions.ignoreUnknownGroups | ReadOptions.skipUnknownGroups | ReadOptions.preserveComments | IconThemeFile.ReadOptions.ignoreGroupDuplicates;
+    unittest
+    {
+        string contents = 
+`[Icon Theme]
+Name=Theme
+[X-SomeGroup]
+Key=Value`;
+
+        alias IconThemeFile.IconThemeReadOptions IconThemeReadOptions;
+        IconThemeReadOptions readOptions;
+        readOptions.extensionGroupPolicy = IconThemeReadOptions.ExtensionGroupPolicy.skip;
+        auto iconTheme = new IconThemeFile(iniLikeStringReader(contents), readOptions);
+        assert(iconTheme.group("X-SomeGroup") is null);
+    
+    contents = 
+`[Icon Theme]
+Name=Theme
+[/invalid group]
+$=StrangeKey`;
+
+        readOptions = IconThemeReadOptions.init;
+        readOptions.unknownGroupPolicy = IconThemeReadOptions.UnknownGroupPolicy.preserve;
+        readOptions.invalidKeyPolicy = IniLikeGroup.InvalidKeyPolicy.save;
+
+        iconTheme = new IconThemeFile(iniLikeStringReader(contents), readOptions);
+        assert(iconTheme.group("/invalid group") !is null);
+        assert(iconTheme.group("/invalid group").value("$") == "StrangeKey");
+    
+    contents = 
+`[X-SomeGroup]
+Key=Value`;
+
+        auto thrown = collectException!IniLikeReadException(new IconThemeFile(iniLikeStringReader(contents)));
+        assert(thrown !is null);
+        assert(thrown.lineNumber == 0);
+        
+        contents = 
+`[Icon Theme]
+Valid=Key
+$=Invalid`;
+
+        assertThrown(new IconThemeFile(iniLikeStringReader(contents)));
+        
+        readOptions = IconThemeReadOptions.init;
+        readOptions.invalidKeyPolicy = IniLikeGroup.InvalidKeyPolicy.skip;
+        
+        assertNotThrown(new IconThemeFile(iniLikeStringReader(contents), readOptions));
+        
+        contents = 
+`[Icon Theme]
+Name=Name
+[/invalidpath]
+Key=Value`;
+
+        readOptions = IconThemeReadOptions.init;
+        readOptions.unknownGroupPolicy = IconThemeReadOptions.UnknownGroupPolicy.throwError;
+        assertThrown(new IconThemeFile(iniLikeStringReader(contents), readOptions));
+        
+        readOptions = IconThemeReadOptions.init;
+        readOptions.unknownGroupPolicy = IconThemeReadOptions.UnknownGroupPolicy.preserve;
+        assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), readOptions));
+        assert(iconTheme.cachePath().empty);
+        assert(iconTheme.group("/invalidpath") !is null);
+    }
 
 protected:
-    @trusted bool isDirectoryName(string groupName)
+    @trusted static bool isDirectoryName(string groupName)
     {
         return groupName.pathSplitter.all!isValidFilename;
     }
     
-    @trusted override void addCommentForGroup(string comment, IniLikeGroup currentGroup, string groupName)
-    {
-        if (currentGroup && (_options & ReadOptions.preserveComments)) {
-            currentGroup.appendComment(comment);
-        }
-    }
-    
-    @trusted override void addKeyValueForGroup(string key, string value, IniLikeGroup currentGroup, string groupName)
-    {
-        if (currentGroup) {
-            if ((groupName == "Icon Theme" || isDirectoryName(groupName)) && !isValidKey(key) && (_options & ReadOptions.ignoreInvalidKeys)) {
-                return;
-            }
-            if (currentGroup.contains(key)) {
-                if (_options & ReadOptions.ignoreKeyDuplicates) {
-                    return;
-                } else {
-                    throw new IniLikeException("key '" ~ key ~ "' already exists");
-                }
-            }
-            currentGroup[key] = value;
-        }
-    }
-    
-    @trusted override IniLikeGroup createGroup(string groupName)
-    {
-        if (group(groupName) !is null) {
-            if (_options & ReadOptions.ignoreGroupDuplicates) {
-                return null;
-            } else {
-                throw new IniLikeException("group '" ~ groupName ~ "' already exists");
-            }
-        }
-        
+    @trusted override IniLikeGroup createGroupByName(string groupName) {
         if (groupName == "Icon Theme") {
             _iconTheme = new IconThemeGroup();
             return _iconTheme;
         } else if (groupName.startsWith("X-")) {
-            if (_options & ReadOptions.skipExtensionGroups) {
+            if (_options.extensionGroupPolicy == IconThemeReadOptions.ExtensionGroupPolicy.skip) {
                 return null;
-            } 
-            return createEmptyGroup(groupName);
+            } else {
+                return createEmptyGroup(groupName);
+            }
         } else if (isDirectoryName(groupName)) {
             return createEmptyGroup(groupName);
         } else {
-            if (_options & ReadOptions.ignoreUnknownGroups) {
-                if (_options & ReadOptions.skipUnknownGroups) {
+            final switch(_options.unknownGroupPolicy) {
+                case IconThemeReadOptions.UnknownGroupPolicy.skip:
                     return null;
-                } else {
+                case IconThemeReadOptions.UnknownGroupPolicy.preserve:
                     return createEmptyGroup(groupName);
-                }
-            } else {
-                throw new IniLikeException("Invalid group name: '" ~ groupName ~ "' must be valid relative path or start with 'X-'");
+                case IconThemeReadOptions.UnknownGroupPolicy.throwError:
+                    throw new IniLikeException("Invalid group name: '" ~ groupName ~ "'. Must be valid relative path or start with 'X-'");
             }
         }
-        
     }
-    
 public:
     /**
      * Reads icon theme from file.
@@ -355,8 +409,8 @@ public:
      *  $(B ErrnoException) if file could not be opened.
      *  $(B IniLikeException) if error occured while reading the file.
      */
-    @trusted this(string fileName, ReadOptions options = defaultReadOptions) {
-        this(iniLikeFileReader(fileName), fileName, options);
+    @trusted this(string fileName, IconThemeReadOptions options = IconThemeReadOptions.init) {
+        this(iniLikeFileReader(fileName), options, fileName);
     }
     
     /**
@@ -364,15 +418,14 @@ public:
      * Throws:
      *  $(B IniLikeException) if error occured while parsing.
      */
-    this(IniLikeReader)(IniLikeReader reader, ReadOptions options = defaultReadOptions, string fileName = null)
+    this(IniLikeReader)(IniLikeReader reader, IconThemeReadOptions options = IconThemeReadOptions.init, string fileName = null)
     {
         _options = options;
-        super(reader, fileName);
+        super(reader, fileName, options.baseOptions);
         enforce(_iconTheme !is null, new IniLikeReadException("No \"Icon Theme\" group", 0));
-        _options = ReadOptions.ignoreUnknownGroups | ReadOptions.preserveComments;
     }
     
-    this(IniLikeReader)(IniLikeReader reader, string fileName, ReadOptions options = defaultReadOptions)
+    this(IniLikeReader)(IniLikeReader reader, string fileName, IconThemeReadOptions options = IconThemeReadOptions.init)
     {
         this(reader, options, fileName);
     }
@@ -382,7 +435,7 @@ public:
      */
     @safe this() {
         super();
-        addGroup("Icon Theme");
+        _iconTheme = new IconThemeGroup();
     }
     
     ///
@@ -401,13 +454,6 @@ public:
             return super.removeGroup(groupName);
         }
         return false;
-    }
-    
-    @safe override string appendLeadingComment(string line) nothrow {
-        if (_options & ReadOptions.preserveComments) {
-            return super.appendLeadingComment(line);
-        }
-        return null;
     }
     
     /** 
@@ -545,7 +591,7 @@ public:
     }
     
 private:
-    ReadOptions _options;
+    IconThemeReadOptions _options;
     IconThemeGroup _iconTheme;
     IconThemeCache _cache;
 }
@@ -582,14 +628,13 @@ MinSize=8
 MaxSize=512
 Type=Scalable
 
-# Will not be saved.
+# Will be saved.
 [X-NoName]
 Key=Value`;
 
     string path = buildPath(".", "test", "index.theme");
-
-    auto iconTheme = new IconThemeFile(iniLikeStringReader(contents), path, 
-                                       IconThemeFile.ReadOptions.skipExtensionGroups|IconThemeFile.ReadOptions.preserveComments);
+    
+    auto iconTheme = new IconThemeFile(iniLikeStringReader(contents), path);
     assert(equal(iconTheme.leadingComments(), ["# First comment"]));
     assert(iconTheme.displayName() == "Hicolor");
     assert(iconTheme.localizedDisplayName("ru") == "Стандартная тема");
@@ -600,7 +645,7 @@ Key=Value`;
     assert(equal(iconTheme.inherits(), ["gnome", "hicolor"]));
     assert(iconTheme.internalName() == "test");
     assert(iconTheme.example() == "folder");
-    assert(iconTheme.group("X-NoName") is null);
+    assert(iconTheme.group("X-NoName") !is null);
     
     iconTheme.removeGroup("Icon Theme");
     assert(iconTheme.group("Icon Theme") !is null);
@@ -627,67 +672,6 @@ Key=Value`;
     
     iconTheme.removeGroup("scalable/emblems");
     assert(iconTheme.group("scalable/emblems") is null);
-    
-    contents = 
-`[Icon Theme]
-Name=Theme
-[/invalid group]
-$=StrangeKey`;
-
-    iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreUnknownGroups);
-    assert(iconTheme.group("/invalid group") !is null);
-    assert(iconTheme.group("/invalid group").value("$") == "StrangeKey");
-    
-    contents = 
-`[X-SomeGroup]
-Key=Value`;
-
-    auto thrown = collectException!IniLikeReadException(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
-    assert(thrown !is null);
-    assert(thrown.lineNumber == 0);
-    
-    contents = 
-`[Icon Theme]
-Valid=Key
-$=Invalid`;
-
-    assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
-    assertNotThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreInvalidKeys));
-    
-    contents = 
-`[Icon Theme]
-Key=Value1
-Key=Value2`;
-
-    assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
-    assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreKeyDuplicates));
-    assert(iconTheme.iconTheme().value("Key") == "Value1");
-    
-    contents = 
-`[Icon Theme]
-Name=Name
-[/invalidpath]
-Key=Value`;
-
-    assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
-    assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreUnknownGroups));
-    assert(iconTheme.cachePath().empty);
-    assert(iconTheme.group("/invalidpath") !is null);
-    
-    iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreUnknownGroups|IconThemeFile.ReadOptions.skipUnknownGroups);
-    assert(iconTheme.group("/invalidpath") is null);
-    
-    contents = 
-`[Icon Theme]
-Name=Name1
-[Icon Theme]
-Name=Name2`;
-    
-    assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.noOptions));
-    assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeFile.ReadOptions.ignoreGroupDuplicates));
-    
-    assert(iconTheme.iconTheme().value("Name") == "Name1");
-    
     
     auto itf = new IconThemeFile();
     itf.displayName = "Oxygen";

@@ -22,10 +22,10 @@ int main(string[] args)
             if (themePath.isDir) {
                 themePath = buildPath(themePath, "index.theme");
             }
-            iconTheme = new IconThemeFile(themePath, IconThemeFile.ReadOptions.ignoreGroupDuplicates);
+            iconTheme = new IconThemeFile(themePath, readOptions);
         } else {
             static if (isFreedesktop) {
-                iconTheme = openIconTheme(themePath, baseIconDirs(), IconThemeFile.ReadOptions.ignoreGroupDuplicates);
+                iconTheme = openIconTheme(themePath, baseIconDirs());
             }
             if (!iconTheme) {
                 throw new Exception("Could not find theme");

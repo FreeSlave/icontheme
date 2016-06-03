@@ -112,7 +112,7 @@ auto findIconTheme(Range)(string themeName, Range searchIconDirs)
  */
 IconThemeFile openIconTheme(Range)(string themeName, 
                                          Range searchIconDirs, 
-                                         IconThemeFile.ReadOptions options = IconThemeFile.defaultReadOptions)
+                                         IconThemeFile.IconThemeReadOptions options = IconThemeFile.IconThemeReadOptions.init)
 {
     auto path = findIconTheme(themeName, searchIconDirs);
     return path.empty ? null : new IconThemeFile(to!string(path), options);
@@ -521,7 +521,7 @@ string matchBestIcon(Range)(Range alternatives, uint matchSize)
 
 private void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, IconThemeFile iconTheme, 
                                       Range searchIconDirs, 
-                                      IconThemeFile.ReadOptions options)
+                                      IconThemeFile.IconThemeReadOptions options)
 {
     foreach(name; iconTheme.inherits()) {
         if (!themes.canFind!(function(theme, name) {
@@ -553,7 +553,7 @@ private void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, IconThemeFi
 IconThemeFile[] openBaseThemes(Range)(IconThemeFile iconTheme, 
                                       Range searchIconDirs, 
                                       string fallbackThemeName = "hicolor",
-                                      IconThemeFile.ReadOptions options = IconThemeFile.defaultReadOptions)
+                                      IconThemeFile.IconThemeReadOptions options = IconThemeFile.IconThemeReadOptions.init)
 if(isForwardRange!Range && is(ElementType!Range : string))
 {
     IconThemeFile[] themes;
