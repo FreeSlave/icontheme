@@ -22,7 +22,7 @@ int main(string[] args)
             if (themePath.isDir) {
                 themePath = buildPath(themePath, "index.theme");
             }
-            iconTheme = new IconThemeFile(themePath, readOptions);
+            iconTheme = new IconThemeFile(themePath);
         } else {
             static if (isFreedesktop) {
                 iconTheme = openIconTheme(themePath, baseIconDirs());

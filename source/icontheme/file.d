@@ -266,33 +266,30 @@ protected:
  */
 final class IconThemeFile : IniLikeFile
 {
+    /**
+     * Policy about reading extension groups (those start with 'X-').
+     */
+    enum ExtensionGroupPolicy : ubyte {
+        skip, ///Don't save extension groups.
+        preserve ///Save extension groups.
+    }
+    
+    /**
+     * Policy about reading groups with names which meaning is unknown, i.e. it's not extension nor relative directory path.
+     */
+    enum UnknownGroupPolicy : ubyte {
+        skip, ///Don't save unknown groups.
+        preserve, ///Save unknown groups.
+        throwError ///Throw error when unknown group is encountered.
+    }
+    
     ///Options to manage icon theme file reading
     static struct IconThemeReadOptions
     {
         ///Base $(B ReadOptions) of $(B IniLikeFile).
-        IniLikeFile.ReadOptions baseOptions = IniLikeFile.ReadOptions(
-            IniLikeFile.ReadOptions.DuplicatePolicy.preserve, 
-            IniLikeFile.ReadOptions.DuplicatePolicy.throwError,
-            IniLikeGroup.InvalidKeyPolicy.throwError, true);
+        IniLikeFile.ReadOptions baseOptions = IniLikeFile.ReadOptions(IniLikeFile.DuplicateGroupPolicy.skip);
         
         alias baseOptions this;
-        
-        /**
-         * Policy about reading extension groups (those start with 'X-').
-         */
-        enum ExtensionGroupPolicy : ubyte {
-            skip, ///Don't save extension groups.
-            preserve ///Save extension groups.
-        }
-        
-        /**
-         * Policy about reading groups with names which meaning is unknown, i.e. it's not extension nor relative directory path.
-         */
-        enum UnknownGroupPolicy : ubyte {
-            skip, ///Don't save unknown groups.
-            preserve, ///Save unknown groups.
-            throwError ///Throw error when unknown group is encountered.
-        }
         
         /**
          * Set policy about unknown groups. By default they are skipped without errors.
@@ -306,8 +303,53 @@ final class IconThemeFile : IniLikeFile
          * Note that all groups still need to be preserved if desktop file must be rewritten.
          */
         ExtensionGroupPolicy extensionGroupPolicy = ExtensionGroupPolicy.preserve;
+        
+        ///Setting parameters in any order, leaving not mentioned ones in default state.
+        @nogc @safe this(Args...)(Args args) nothrow pure {
+            foreach(arg; args) {
+                alias Unqual!(typeof(arg)) ArgType;
+                static if (is(ArgType == DuplicateKeyPolicy)) {
+                    baseOptions.duplicateKeyPolicy = arg;
+                } else static if (is(ArgType == DuplicateGroupPolicy)) {
+                    baseOptions.duplicateGroupPolicy = arg;
+                } else static if (is(ArgType == Flag!"preserveComments")) {
+                    baseOptions.preserveComments = arg;
+                } else static if (is(ArgType == IniLikeGroup.InvalidKeyPolicy)) {
+                    baseOptions.invalidKeyPolicy = arg;
+                } else static if (is(ArgType == IniLikeFile.ReadOptions)) {
+                    baseOptions = arg;
+                } else static if (is(ArgType == UnknownGroupPolicy)) {
+                    unknownGroupPolicy = arg;
+                } else static if (is(ArgType == ExtensionGroupPolicy)) {
+                    extensionGroupPolicy = arg;
+                } else {
+                    static assert(false, "Unknown argument type " ~ typeof(arg).stringof);
+                }
+            }
+        }
+        
+        ///
+        unittest
+        {
+            IconThemeReadOptions options;
+            
+            options = IconThemeReadOptions(
+                ExtensionGroupPolicy.skip,
+                UnknownGroupPolicy.preserve, 
+                DuplicateKeyPolicy.skip, 
+                DuplicateGroupPolicy.preserve, 
+                No.preserveComments
+            );
+            
+            assert(options.unknownGroupPolicy == UnknownGroupPolicy.preserve);
+            assert(options.extensionGroupPolicy == ExtensionGroupPolicy.skip);
+            assert(options.duplicateGroupPolicy == DuplicateGroupPolicy.preserve);
+            assert(options.duplicateKeyPolicy == DuplicateKeyPolicy.skip);
+            assert(!options.preserveComments);
+        }
     }
     
+    ///
     unittest
     {
         string contents = 
@@ -317,9 +359,8 @@ Name=Theme
 Key=Value`;
 
         alias IconThemeFile.IconThemeReadOptions IconThemeReadOptions;
-        IconThemeReadOptions readOptions;
-        readOptions.extensionGroupPolicy = IconThemeReadOptions.ExtensionGroupPolicy.skip;
-        auto iconTheme = new IconThemeFile(iniLikeStringReader(contents), readOptions);
+
+        auto iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeReadOptions(ExtensionGroupPolicy.skip));
         assert(iconTheme.group("X-SomeGroup") is null);
     
     contents = 
@@ -328,11 +369,7 @@ Name=Theme
 [/invalid group]
 $=StrangeKey`;
 
-        readOptions = IconThemeReadOptions.init;
-        readOptions.unknownGroupPolicy = IconThemeReadOptions.UnknownGroupPolicy.preserve;
-        readOptions.invalidKeyPolicy = IniLikeGroup.InvalidKeyPolicy.save;
-
-        iconTheme = new IconThemeFile(iniLikeStringReader(contents), readOptions);
+        iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeReadOptions(UnknownGroupPolicy.preserve, IniLikeGroup.InvalidKeyPolicy.save));
         assert(iconTheme.group("/invalid group") !is null);
         assert(iconTheme.group("/invalid group").value("$") == "StrangeKey");
     
@@ -350,11 +387,7 @@ Valid=Key
 $=Invalid`;
 
         assertThrown(new IconThemeFile(iniLikeStringReader(contents)));
-        
-        readOptions = IconThemeReadOptions.init;
-        readOptions.invalidKeyPolicy = IniLikeGroup.InvalidKeyPolicy.skip;
-        
-        assertNotThrown(new IconThemeFile(iniLikeStringReader(contents), readOptions));
+        assertNotThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeReadOptions(IniLikeGroup.InvalidKeyPolicy.skip)));
         
         contents = 
 `[Icon Theme]
@@ -362,13 +395,8 @@ Name=Name
 [/invalidpath]
 Key=Value`;
 
-        readOptions = IconThemeReadOptions.init;
-        readOptions.unknownGroupPolicy = IconThemeReadOptions.UnknownGroupPolicy.throwError;
-        assertThrown(new IconThemeFile(iniLikeStringReader(contents), readOptions));
-        
-        readOptions = IconThemeReadOptions.init;
-        readOptions.unknownGroupPolicy = IconThemeReadOptions.UnknownGroupPolicy.preserve;
-        assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), readOptions));
+        assertThrown(new IconThemeFile(iniLikeStringReader(contents), IconThemeReadOptions(UnknownGroupPolicy.throwError)));
+        assertNotThrown(iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeReadOptions(UnknownGroupPolicy.preserve)));
         assert(iconTheme.cachePath().empty);
         assert(iconTheme.group("/invalidpath") !is null);
     }
@@ -384,7 +412,7 @@ protected:
             _iconTheme = new IconThemeGroup();
             return _iconTheme;
         } else if (groupName.startsWith("X-")) {
-            if (_options.extensionGroupPolicy == IconThemeReadOptions.ExtensionGroupPolicy.skip) {
+            if (_options.extensionGroupPolicy == ExtensionGroupPolicy.skip) {
                 return null;
             } else {
                 return createEmptyGroup(groupName);
@@ -393,11 +421,11 @@ protected:
             return createEmptyGroup(groupName);
         } else {
             final switch(_options.unknownGroupPolicy) {
-                case IconThemeReadOptions.UnknownGroupPolicy.skip:
+                case UnknownGroupPolicy.skip:
                     return null;
-                case IconThemeReadOptions.UnknownGroupPolicy.preserve:
+                case UnknownGroupPolicy.preserve:
                     return createEmptyGroup(groupName);
-                case IconThemeReadOptions.UnknownGroupPolicy.throwError:
+                case UnknownGroupPolicy.throwError:
                     throw new IniLikeException("Invalid group name: '" ~ groupName ~ "'. Must be valid relative path or start with 'X-'");
             }
         }
