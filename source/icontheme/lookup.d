@@ -198,14 +198,14 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
 {
     alias Tuple!(string, IconSubDir, ElementType!IconThemes) Tripplet;
     
-    return iconThemes.filter!(iconTheme => iconTheme !is null && iconTheme.internalName().length != 0)
+    return inputRangeObject(iconThemes.filter!(iconTheme => iconTheme !is null && iconTheme.internalName().length != 0)
     .map!(iconTheme => tuple(iconTheme, searchIconDirs.map!(dir => buildPath(dir, iconTheme.internalName()))
         .filter!(function(themeBaseDir) {
             bool ok;
             collectException(themeBaseDir.isDir, ok);
             return ok;
-        }).array))
-    .cache().map!(delegate(t) {
+        }).array)))
+    .map!(delegate(t) {
         auto iconTheme = t[0];
         auto themeBaseDirs = t[1];
         return iconTheme.bySubdir().filter!(subdirFilter).map!(delegate(subdir) {
@@ -494,11 +494,37 @@ string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
     }
 }
 
+///
+unittest
+{
+    auto baseDirs = ["test"];
+    auto iconThemes = [openIconTheme("Tango", baseDirs), openIconTheme("hicolor", baseDirs)];
+    
+    string found;
+    
+    found = findLargestIcon("folder", iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "128x128", "places", "folder.png"));
+    
+    found = findLargestIcon("desktop", iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "32x32", "places", "desktop.png"));
+    
+    found = findLargestIcon("desktop", iconThemes, baseDirs, [".svg", ".png"]);
+    assert(found == buildPath("test", "Tango", "scalable", "places", "desktop.svg"));
+    
+    //lookup with fallback
+    found = findLargestIcon("pidgin", iconThemes, baseDirs);
+    assert(found == buildPath("test", "pidgin.png"));
+    
+    //lookup without fallback
+    found = findLargestIcon("pidgin", iconThemes, baseDirs, defaultIconExtensions, No.allowFallbackIcon);
+    assert(found.empty);
+}
+
 /** 
  * ditto, but with predefined extensions and fallback allowed.
  * See_Also: defaultIconExtensions
  */
-string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs)
+string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs)
 {
     return findLargestIcon!subdirFilter(iconName, iconThemes, searchIconDirs, defaultIconExtensions);
 }
