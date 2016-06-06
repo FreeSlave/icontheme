@@ -26,6 +26,19 @@ package {
 }
 
 /**
+ * Default icon extensions. This array include .png and .xpm.
+ * PNG is recommended format.
+ * XPM is kept for backward compatibility.
+ * 
+ * Note: Icon Theme Specificiation also lists .svg as possible format, 
+ * but it's less common to have SVG support for applications, 
+ * hence this format is defined as optional by specificiation.
+ * If your application has proper support for SVG images, 
+ * array should include it in the first place as the most preferred format.
+ */
+enum defaultIconExtensions = [".png", ".xpm"];
+
+/**
  * Find all icon themes in searchIconDirs.
  * Note:
  *  You may want to skip icon themes duplicates if there're different versions of the index.theme file for the same theme.
@@ -52,6 +65,16 @@ if(is(ElementType!Range : string))
                     return ok;
                 });
         }).joiner;
+}
+
+///
+unittest
+{
+    auto paths = iconThemePaths(["test"]).array;
+    assert(paths.length == 3);
+    assert(paths.canFind(buildPath("test", "NewTango", "index.theme")));
+    assert(paths.canFind(buildPath("test", "Tango", "index.theme")));
+    assert(paths.canFind(buildPath("test", "hicolor", "index.theme")));
 }
 
 /**
@@ -116,6 +139,20 @@ IconThemeFile openIconTheme(Range)(string themeName,
 {
     auto path = findIconTheme(themeName, searchIconDirs);
     return path.empty ? null : new IconThemeFile(to!string(path), options);
+}
+
+///
+unittest
+{
+    auto tango = openIconTheme("Tango", ["test"]);
+    assert(tango);
+    assert(tango.displayName() == "Tango");
+    
+    auto hicolor = openIconTheme("hicolor", ["test"]);
+    assert(hicolor);
+    assert(hicolor.displayName() == "Hicolor");
+    
+    assert(openIconTheme("Nonexistent", ["test"]) is null);
 }
 
 
@@ -285,6 +322,27 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
 }
 
 /**
+ * Find fallback icon outside of icon themes. The first found is returned.
+ * See_Also: lookupFallbackIcon, icontheme.paths.baseIconDirs
+ */
+string findFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
+{
+    auto r = lookupFallbackIcon(iconName, searchIconDirs, extensions);
+    if (r.empty) {
+        return null;
+    } else {
+        return r.front;
+    }
+}
+
+///
+unittest
+{
+    assert(findFallbackIcon("pidgin", ["test"], defaultIconExtensions) == buildPath("test", "pidgin.png"));
+    assert(findFallbackIcon("nonexistent", ["test"], defaultIconExtensions).empty);
+}
+
+/**
  * Find icon closest of the size. It uses icon theme cache wherever possible. The first perfect match is used.
  * Params:
  *  iconName = Name of icon to search as defined by Icon Theme Specification (i.e. without path and extension parts).
@@ -329,6 +387,72 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
     }
 }
 
+///
+unittest
+{
+    auto baseDirs = ["test"];
+    auto iconThemes = [openIconTheme("Tango", baseDirs), openIconTheme("hicolor", baseDirs)];
+    
+    string found;
+    
+    //exact match
+    found = findClosestIcon("folder", 32, iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.png"));
+    
+    found = findClosestIcon("folder", 24, iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "24x24", "devices", "folder.png"));
+    
+    found = findClosestIcon!(subdir => subdir.context == "Places")("folder", 32, iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.png"));
+    
+    found = findClosestIcon!(subdir => subdir.context == "Places")("folder", 24, iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.png"));
+    
+    found = findClosestIcon!(subdir => subdir.context == "MimeTypes")("folder", 32, iconThemes, baseDirs);
+    assert(found.empty);
+    
+    //hicolor has exact match, but Tango is more preferred.
+    found = findClosestIcon("folder", 64, iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.png"));
+    
+    //find xpm
+    found = findClosestIcon("folder", 32, iconThemes, baseDirs, [".xpm"]);
+    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.xpm"));
+    
+    //find big png, not exact match
+    found = findClosestIcon("folder", 200, iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "128x128", "places", "folder.png"));
+    
+    //svg is closer
+    found = findClosestIcon("folder", 200, iconThemes, baseDirs, [".png", ".svg"]);
+    assert(found == buildPath("test", "Tango", "scalable", "places", "folder.svg"));
+    
+    //lookup with fallback
+    found = findClosestIcon("pidgin", 96, iconThemes, baseDirs);
+    assert(found == buildPath("test", "pidgin.png"));
+    
+    //lookup without fallback
+    found = findClosestIcon("pidgin", 96, iconThemes, baseDirs, defaultIconExtensions, No.allowFallbackIcon);
+    assert(found.empty);
+    
+    found = findClosestIcon("text-plain", 48, iconThemes, baseDirs);
+    assert(found == buildPath("test", "hicolor", "48x48", "mimetypes", "text-plain.png"));
+
+    found = findClosestIcon!(subdir => subdir.context == "MimeTypes")("text-plain", 48, iconThemes, baseDirs);
+    assert(found == buildPath("test", "hicolor", "48x48", "mimetypes", "text-plain.png"));
+    
+    found = findClosestIcon!(subdir => subdir.context == "Actions")("text-plain", 48, iconThemes, baseDirs);
+    assert(found.empty);
+}
+
+/** 
+ * ditto, but with predefined extensions and fallback allowed.
+ * See_Also: defaultIconExtensions
+ */
+string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs)
+{
+    return findClosestIcon!subdirFilter(iconName, size, iconThemes, searchIconDirs, defaultIconExtensions);
+}
 
 /**
  * Find icon of the largest size. It uses icon theme cache wherever possible.
@@ -370,19 +494,13 @@ string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
     }
 }
 
-
-/**
- * Find fallback icon outside of icon themes. The first found is returned.
- * See_Also: lookupFallbackIcon, icontheme.paths.baseIconDirs
+/** 
+ * ditto, but with predefined extensions and fallback allowed.
+ * See_Also: defaultIconExtensions
  */
-string findFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
+string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs)
 {
-    auto r = lookupFallbackIcon(iconName, searchIconDirs, extensions);
-    if (r.empty) {
-        return null;
-    } else {
-        return r.front;
-    }
+    return findLargestIcon!subdirFilter(iconName, iconThemes, searchIconDirs, defaultIconExtensions);
 }
 
 /**
@@ -571,4 +689,19 @@ if(isForwardRange!Range && is(ElementType!Range : string))
     }
     
     return themes;
+}
+
+///
+unittest
+{
+    auto tango = openIconTheme("NewTango", ["test"]);
+    auto baseThemes = openBaseThemes(tango, ["test"]);
+    
+    assert(baseThemes.length == 2);
+    assert(baseThemes[0].internalName() == "Tango");
+    assert(baseThemes[1].internalName() == "hicolor");
+    
+    baseThemes = openBaseThemes(tango, ["test"], null);
+    assert(baseThemes.length == 1);
+    assert(baseThemes[0].internalName() == "Tango");
 }

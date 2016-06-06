@@ -176,6 +176,9 @@ final class IconThemeCache
         });
     }
     
+    /**
+     * Path of cache file.
+     */
     @nogc @safe fileName() const nothrow {
         return _fileName;
     }
@@ -401,7 +404,7 @@ private:
 
 unittest
 {
-    string cachePath = "./test/icon-theme.cache";
+    string cachePath = "./test/Tango/icon-theme.cache";
     assert(cachePath.exists);
     
     const(IconThemeCache) cache = new IconThemeCache(cachePath);

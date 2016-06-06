@@ -660,7 +660,7 @@ Type=Scalable
 [X-NoName]
 Key=Value`;
 
-    string path = buildPath(".", "test", "index.theme");
+    string path = buildPath(".", "test", "Tango", "index.theme");
     
     auto iconTheme = new IconThemeFile(iniLikeStringReader(contents), path);
     assert(equal(iconTheme.leadingComments(), ["# First comment"]));
@@ -671,14 +671,14 @@ Key=Value`;
     assert(iconTheme.hidden());
     assert(equal(iconTheme.directories(), ["16x16/actions", "32x32/animations", "scalable/emblems"]));
     assert(equal(iconTheme.inherits(), ["gnome", "hicolor"]));
-    assert(iconTheme.internalName() == "test");
+    assert(iconTheme.internalName() == "Tango");
     assert(iconTheme.example() == "folder");
     assert(iconTheme.group("X-NoName") !is null);
     
     iconTheme.removeGroup("Icon Theme");
     assert(iconTheme.group("Icon Theme") !is null);
     
-    assert(iconTheme.cachePath() == buildPath(".", "test", "icon-theme.cache"));
+    assert(iconTheme.cachePath() == buildPath(".", "test", "Tango", "icon-theme.cache"));
     
     assert(equal(iconTheme.bySubdir().map!(subdir => tuple(subdir.name(), subdir.size(), subdir.minSize(), subdir.maxSize(), subdir.context(), subdir.type() )), 
                  [tuple("16x16/actions", 16, 16, 16, "Actions", IconSubDir.Type.Threshold), 
