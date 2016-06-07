@@ -383,35 +383,35 @@ unittest
     
     //exact match
     found = findClosestIcon("folder", 32, iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.png"));
+    assert(found == buildPath("test", "Tango", "32x32/places", "folder.png"));
     
     found = findClosestIcon("folder", 24, iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "24x24", "devices", "folder.png"));
+    assert(found == buildPath("test", "Tango", "24x24/devices", "folder.png"));
     
     found = findClosestIcon!(subdir => subdir.context == "Places")("folder", 32, iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.png"));
+    assert(found == buildPath("test", "Tango", "32x32/places", "folder.png"));
     
     found = findClosestIcon!(subdir => subdir.context == "Places")("folder", 24, iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.png"));
+    assert(found == buildPath("test", "Tango", "32x32/places", "folder.png"));
     
     found = findClosestIcon!(subdir => subdir.context == "MimeTypes")("folder", 32, iconThemes, baseDirs);
     assert(found.empty);
     
     //hicolor has exact match, but Tango is more preferred.
     found = findClosestIcon("folder", 64, iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.png"));
+    assert(found == buildPath("test", "Tango", "32x32/places", "folder.png"));
     
     //find xpm
     found = findClosestIcon("folder", 32, iconThemes, baseDirs, [".xpm"]);
-    assert(found == buildPath("test", "Tango", "32x32", "places", "folder.xpm"));
+    assert(found == buildPath("test", "Tango", "32x32/places", "folder.xpm"));
     
     //find big png, not exact match
     found = findClosestIcon("folder", 200, iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "128x128", "places", "folder.png"));
+    assert(found == buildPath("test", "Tango", "128x128/places", "folder.png"));
     
     //svg is closer
     found = findClosestIcon("folder", 200, iconThemes, baseDirs, [".png", ".svg"]);
-    assert(found == buildPath("test", "Tango", "scalable", "places", "folder.svg"));
+    assert(found == buildPath("test", "Tango", "scalable/places", "folder.svg"));
     
     //lookup with fallback
     found = findClosestIcon("pidgin", 96, iconThemes, baseDirs);
@@ -422,10 +422,10 @@ unittest
     assert(found.empty);
     
     found = findClosestIcon("text-plain", 48, iconThemes, baseDirs);
-    assert(found == buildPath("test", "hicolor", "48x48", "mimetypes", "text-plain.png"));
+    assert(found == buildPath("test", "hicolor", "48x48/mimetypes", "text-plain.png"));
 
     found = findClosestIcon!(subdir => subdir.context == "MimeTypes")("text-plain", 48, iconThemes, baseDirs);
-    assert(found == buildPath("test", "hicolor", "48x48", "mimetypes", "text-plain.png"));
+    assert(found == buildPath("test", "hicolor", "48x48/mimetypes", "text-plain.png"));
     
     found = findClosestIcon!(subdir => subdir.context == "Actions")("text-plain", 48, iconThemes, baseDirs);
     assert(found.empty);
@@ -489,13 +489,13 @@ unittest
     string found;
     
     found = findLargestIcon("folder", iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "128x128", "places", "folder.png"));
+    assert(found == buildPath("test", "Tango", "128x128/places", "folder.png"));
     
     found = findLargestIcon("desktop", iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "32x32", "places", "desktop.png"));
+    assert(found == buildPath("test", "Tango", "32x32/places", "desktop.png"));
     
     found = findLargestIcon("desktop", iconThemes, baseDirs, [".svg", ".png"]);
-    assert(found == buildPath("test", "Tango", "scalable", "places", "desktop.svg"));
+    assert(found == buildPath("test", "Tango", "scalable/places", "desktop.svg"));
     
     //lookup with fallback
     found = findLargestIcon("pidgin", iconThemes, baseDirs);
