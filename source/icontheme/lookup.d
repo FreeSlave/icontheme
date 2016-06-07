@@ -25,6 +25,20 @@ package {
     import std.typecons;
 }
 
+@trusted bool isDirNothrow(string dir) nothrow
+{
+    bool ok;
+    collectException(dir.isDir(), ok);
+    return ok;
+}
+
+@trusted bool isFileNothrow(string file) nothrow
+{
+    bool ok;
+    collectException(file.isFile(), ok);
+    return ok;
+}
+
 /**
  * Default icon extensions. This array include .png and .xpm.
  * PNG is recommended format.
@@ -59,11 +73,7 @@ if(is(ElementType!Range : string))
         }).map!(function(iconDir) {
             return iconDir.dirEntries(SpanMode.shallow)
                 .map!(p => buildPath(p, "index.theme")).cache()
-                .filter!(function(f) {
-                    bool ok;
-                    collectException(f.isFile, ok);
-                    return ok;
-                });
+                .filter!(isFileNothrow);
         }).joiner;
 }
 
@@ -93,11 +103,7 @@ if(is(ElementType!Range : string))
 {
     return searchIconDirs
         .map!(dir => buildPath(dir, themeName, "index.theme")).cache()
-        .filter!(function(path) {
-            bool ok;
-            collectException(path.isFile, ok);
-            return ok;
-        });
+        .filter!(isFileNothrow);
 }
 
 /**
@@ -163,7 +169,7 @@ if (isForwardRange!(Exts) && is(ElementType!Exts : string) && is(IconTheme : con
             .map!(delegate(extension) {
                 auto path = buildPath(subdirPath, iconName ~ extension);
                 return Tripplet(path, subdir, iconTheme); 
-            }).cache().filter!(function(t) {
+            }).filter!(function(t) {
                 bool ok;
                 collectException(t[0].isFile, ok);
                 return ok;
@@ -200,11 +206,7 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
     
     return inputRangeObject(iconThemes.filter!(iconTheme => iconTheme !is null && iconTheme.internalName().length != 0)
     .map!(iconTheme => tuple(iconTheme, searchIconDirs.map!(dir => buildPath(dir, iconTheme.internalName()))
-        .filter!(function(themeBaseDir) {
-            bool ok;
-            collectException(themeBaseDir.isDir, ok);
-            return ok;
-        }).array)))
+        .filter!(isDirNothrow).array)))
     .map!(delegate(t) {
         auto iconTheme = t[0];
         auto themeBaseDirs = t[1];
@@ -224,11 +226,7 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
             } else {
                 auto r = themeBaseDirs.map!(delegate(themeBaseDir) {
                     return buildPath(themeBaseDir, subdir.name);
-                }).cache().filter!(function(subdirPath) {
-                    bool ok;
-                    collectException(subdirPath.isDir, ok);
-                    return ok;
-                }).map!(subdirPath => withExtensions!Tripplet(extensions, iconName, subdirPath, subdir, iconTheme)).joiner;
+                }).filter!(isDirNothrow).map!(subdirPath => withExtensions!Tripplet(extensions, iconName, subdirPath, subdir, iconTheme)).joiner;
                 InputRange!Tripplet iro = inputRangeObject(r);
                 return iro;
             }
@@ -263,11 +261,7 @@ if (is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs
         iconTheme => iconTheme.bySubdir().filter!(subdirFilter).map!(
             subdir => searchIconDirs.map!(
                 basePath => buildPath(basePath, iconTheme.internalName(), subdir.name)
-            ).filter!(function(subdirPath) {
-                bool ok;
-                collectException(subdirPath.isDir, ok);
-                return ok;
-            }).map!(
+            ).filter!(isDirNothrow).map!(
                 subdirPath => subdirPath.dirEntries(SpanMode.shallow).filter!(
                     filePath => filePath.isFile && extensions.canFind(filePath.extension) 
                 ).map!(filePath => tuple(filePath, subdir, iconTheme))
@@ -289,12 +283,8 @@ auto lookupFallbackIcons(BaseDirs, Exts)(BaseDirs searchIconDirs, Exts extension
 if (isInputRange!(BaseDirs) && isForwardRange!(Exts) && 
     isSomeString!(ElementType!BaseDirs) && isSomeString!(ElementType!Exts))
 {
-    return searchIconDirs.filter!(function(basePath) {
-        bool ok;
-        collectException(basePath.isDir, ok);
-        return ok;
-    }).map!(basePath => basePath.dirEntries(SpanMode.shallow).filter!(
-        filePath => filePath.isFile && extensions.canFind(filePath.extension)
+    return searchIconDirs.filter!(isDirNothrow).map!(basePath => basePath.dirEntries(SpanMode.shallow).filter!(
+        filePath => filePath.isFileNothrow && extensions.canFind(filePath.extension)
     )).joiner;
 }
 
@@ -313,11 +303,7 @@ if (is(ElementType!BaseDirs : string) && is (ElementType!Exts : string))
     return searchIconDirs.map!(basePath => 
         extensions
             .map!(extension => buildPath(basePath, iconName ~ extension)).cache()
-            .filter!(function(string path) {
-                bool ok;
-                collectException(path.isFile, ok);
-                return ok;
-            })
+            .filter!(isFileNothrow)
     ).joiner;
 }
 
