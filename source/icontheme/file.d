@@ -124,7 +124,7 @@ struct IconSubDir
     /** 
      * The maximum size that the icons in this directory can be scaled to. Defaults to the value of Size if not present.
      * Returns: The value associated with "MaxSize" key converted to an unsigned integer, or size() if the value is not present or not a number.
-     * See_Also: size, minSize
+     * See_Also: $(D size), $(D minSize)
      */
     @nogc @safe uint maxSize() const nothrow pure {
         return _maxSize;
@@ -133,7 +133,7 @@ struct IconSubDir
     /** 
      * The minimum size that the icons in this directory can be scaled to. Defaults to the value of Size if not present.
      * Returns: The value associated with "MinSize" key converted to an unsigned integer, or size() if the value is not present or not a number.
-     * See_Also: size, maxnSize
+     * See_Also: $(D size), $(D maxSize)
      */
     @nogc @safe uint minSize() const nothrow pure {
         return _minSize;
@@ -165,7 +165,7 @@ final class IconThemeGroup : IniLikeGroup
     /**
      * Short name of the icon theme, used in e.g. lists when selecting themes.
      * Returns: The value associated with "Name" key.
-     * See_Also: IconThemeFile.internalName, localizedDisplayName
+     * See_Also: $(D IconThemeFile.internalName), $(D localizedDisplayName)
      */
     @safe string displayName() const nothrow pure {
         return readEntry("Name");
@@ -486,7 +486,7 @@ public:
     
     /** 
      * The name of the subdirectory index.theme was loaded from.
-     * See_Also: IconThemeGroup.displayName
+     * See_Also: $(D IconThemeGroup.displayName)
      */
     @trusted string internalName() const {
         return fileName().absolutePath().dirName().baseName();
@@ -495,7 +495,7 @@ public:
     /**
      * Some keys can have multiple values, separated by comma. This function helps to parse such kind of strings into the range.
      * Returns: The range of multiple nonempty values.
-     * See_Also: joinValues
+     * See_Also: $(D joinValues)
      */
     @trusted static auto splitValues(string values) {
         return std.algorithm.splitter(values, ',').filter!(s => s.length != 0);
@@ -512,7 +512,7 @@ public:
     /**
      * Join range of multiple values into a string using comma as separator.
      * If range is empty, then the empty string is returned.
-     * See_Also: splitValues
+     * See_Also: $(D splitValues)
      */
     static string joinValues(Range)(Range values) if (isInputRange!Range && isSomeString!(ElementType!Range)) {
         auto result = values.filter!( s => s.length != 0 ).joiner(",");
@@ -532,7 +532,7 @@ public:
     
     /**
      * Iterating over subdirectories of icon theme.
-     * See_Also: IconThemeGroup.directories
+     * See_Also: $(D IconThemeGroup.directories)
      */
     @trusted auto bySubdir() const {
         return directories().filter!(dir => group(dir) !is null).map!(dir => IconSubDir(group(dir))).array;
@@ -558,7 +558,7 @@ public:
      * Try to load icon cache. Loaded icon cache will be used on icon lookup.
      * Returns: Loaded IconThemeCache object or null, if cache does not exist or invalid or outdated.
      * Note: This function expects that icon theme has fileName.
-     * See_Also: icontheme.cache.IconThemeCache, icontheme.lookup.lookupIcon, cache, unloadCache, cachePath
+     * See_Also: $(D icontheme.cache.IconThemeCache), $(D icontheme.lookup.lookupIcon), $(D cache), $(D unloadCache), $(D cachePath)
      */
     @trusted auto tryLoadCache(Flag!"allowOutdated" allowOutdated = Flag!"allowOutdated".no) nothrow
     {
@@ -589,7 +589,7 @@ public:
     
     /**
      * Set cache object.
-     * See_Also: tryLoadCache, iconTheme.lookup.lookupIcons
+     * See_Also: $(D tryLoadCache)
      */
     @nogc @safe IconThemeCache cache(IconThemeCache setCache) nothrow {
         _cache = setCache;

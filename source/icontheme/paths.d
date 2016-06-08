@@ -18,10 +18,9 @@ private {
     import std.array;
     import std.exception;
     import std.path;
-    import std.process : environment;
     import std.range;
     import std.traits;
-
+    import std.process : environment;
     import isfreedesktop;
     import xdgpaths;
 }
@@ -93,7 +92,6 @@ static if (isFreedesktop) {
     ///
     unittest
     {
-        import std.process : environment;
         auto dataHomeGuard = EnvGuard("XDG_DATA_HOME");
         environment["XDG_DATA_HOME"] = "/home/user/data";
         assert(writableIconsPath() == "/home/user/data/icons");

@@ -80,7 +80,7 @@ final class IconThemeCache
      * Read icon theme cache from memory mapped file and validate it.
      * Throws: 
      *  $(B FileException) if could mmap file.
-     *  $(B IconThemeCacheException) if icon theme file is invalid.
+     *  $(D IconThemeCacheException) if icon theme file is invalid.
      */
     @trusted this(string fileName) {
         _mmapped = new MmFile(fileName);
@@ -90,7 +90,7 @@ final class IconThemeCache
     /**
      * Read icon theme cache from data and validate it.
      * Throws:
-     *  $(B IconThemeCacheException) if icon theme file is invalid.
+     *  $(D IconThemeCacheException) if icon theme file is invalid.
      */
     @safe this(immutable(void)[] data, string fileName) {
         this(data, fileName, 0);
@@ -402,6 +402,7 @@ private:
     const(void)[] _data;
 }
 
+///
 unittest
 {
     string cachePath = "./test/Tango/icon-theme.cache";
