@@ -308,22 +308,14 @@ final class IconThemeFile : IniLikeFile
         @nogc @safe this(Args...)(Args args) nothrow pure {
             foreach(arg; args) {
                 alias Unqual!(typeof(arg)) ArgType;
-                static if (is(ArgType == DuplicateKeyPolicy)) {
-                    baseOptions.duplicateKeyPolicy = arg;
-                } else static if (is(ArgType == DuplicateGroupPolicy)) {
-                    baseOptions.duplicateGroupPolicy = arg;
-                } else static if (is(ArgType == Flag!"preserveComments")) {
-                    baseOptions.preserveComments = arg;
-                } else static if (is(ArgType == IniLikeGroup.InvalidKeyPolicy)) {
-                    baseOptions.invalidKeyPolicy = arg;
-                } else static if (is(ArgType == IniLikeFile.ReadOptions)) {
+                static if (is(ArgType == IniLikeFile.ReadOptions)) {
                     baseOptions = arg;
                 } else static if (is(ArgType == UnknownGroupPolicy)) {
                     unknownGroupPolicy = arg;
                 } else static if (is(ArgType == ExtensionGroupPolicy)) {
                     extensionGroupPolicy = arg;
                 } else {
-                    static assert(false, "Unknown argument type " ~ typeof(arg).stringof);
+                    baseOptions.assign(arg);
                 }
             }
         }
