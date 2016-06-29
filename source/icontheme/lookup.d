@@ -48,7 +48,8 @@ package {
  * but it's less common to have SVG support for applications, 
  * hence this format is defined as optional by specificiation.
  * If your application has proper support for SVG images, 
- * array should include it in the first place as the most preferred format.
+ * array should include it in the first place as the most preferred format 
+ * because SVG images are scalable.
  */
 enum defaultIconExtensions = [".png", ".xpm"];
 
@@ -184,7 +185,8 @@ if (isForwardRange!(Exts) && is(ElementType!Exts : string) && is(IconTheme : con
  *  searchIconDirs = Case icon directories.
  *  extensions = Possible file extensions of needed icon file, in order of preference.
  *  reverse = Iterate over icon theme sub-directories in reverse way. 
- *      Usually directories with larger icon size are listed the last, so this parameter may speed up the search.
+ *      Usually directories with larger icon size are listed the last, 
+ *      so this parameter may speed up the search when looking for the largest icon.
  * Note: Specification says that extension must be ".png", ".xpm" or ".svg", though SVG is not required to be supported. Some icon themes also contain .svgz images.
  * Example:
 ----------
@@ -196,7 +198,7 @@ foreach(item; lookupIcon!(subdir => subdir.context == "Places" && subdir.size >=
  * See_Also: $(D icontheme.paths.baseIconDirs), $(D lookupFallbackIcon)
  */
 
-auto lookupIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, bool reverse = false)
+auto lookupIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"reverse" reverse = No.reverse)
 if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Exts) && 
     is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs : string) && is(ElementType!Exts : string))
 {
@@ -208,12 +210,7 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
     .map!(delegate(t) {
         auto iconTheme = t[0];
         auto themeBaseDirs = t[1];
-        InputRange!IconSubDir bySubdir;
-        if (reverse) {
-            bySubdir = inputRangeObject(iconTheme.bySubdir().retro());
-        } else {
-            bySubdir = inputRangeObject(iconTheme.bySubdir());
-        }
+        auto bySubdir = choose(reverse, iconTheme.bySubdir().retro(), iconTheme.bySubdir());
         return bySubdir.filter!(subdirFilter).map!(delegate(subdir) {
             if (iconTheme.cache !is null) {
                 if (iconTheme.cache.containsIcon(iconName, subdir.name)) {
@@ -236,6 +233,60 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
             }
         }).joiner;
     }).filter!(range => !range.empty).takeOne().joiner;
+}
+
+void lookupIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts, OutputRange)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, OutputRange sink, Flag!"reverse" reverse = No.reverse)
+if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Exts) && 
+    is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs : string) && is(ElementType!Exts : string))
+{
+    alias Tuple!(string, IconSubDir, ElementType!IconThemes) Tripplet;
+    
+    bool onExtensions(string subdirPath, IconSubDir subdir, ElementType!IconThemes iconTheme)
+    {
+        if (!subdirPath.isDirNothrow) {
+            return false;
+        }
+        bool toReturn;
+        foreach(extension; extensions) {
+            string path = buildPath(subdirPath, iconName ~ extension);
+            if (path.isFileNothrow) {
+                toReturn = true;
+                put(sink, Tripplet(path, subdir, iconTheme));
+            }
+        }
+        return toReturn;
+    }
+    
+    foreach(iconTheme; iconThemes) {
+        if (iconTheme is null || iconTheme.internalName().length == 0) {
+            continue;
+        }
+        
+        string[] themeBaseDirs = searchIconDirs.map!(dir => buildPath(dir, iconTheme.internalName())).filter!(isDirNothrow).array;
+        
+        bool found;
+        
+        auto bySubdir = choose(reverse, iconTheme.bySubdir().retro(), iconTheme.bySubdir());
+        foreach(subdir; bySubdir) {
+            if (!subdirFilter(subdir)) {
+                continue;
+            }
+            if (iconTheme.cache !is null) {
+                if (iconTheme.cache.containsIcon(iconName, subdir.name)) {
+                    string subdirPath = buildPath(iconTheme.cache.fileName.dirName, subdir.name);
+                    found = onExtensions(subdirPath, subdir, iconTheme) || found;
+                }
+            } else {
+                foreach(themeBaseDir; themeBaseDirs) {
+                    string subdirPath = buildPath(themeBaseDir, subdir.name);
+                    found = onExtensions(subdirPath, subdir, iconTheme) || found;
+                }
+            }
+        }
+        if (found) {
+            return;
+        }
+    }
 }
 
 /**
@@ -350,22 +401,40 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
     uint minDistance = uint.max;
     string closest;
     
-    foreach(t; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
-        return subdirFilter(subdir) && iconSizeDistance(subdir, size) <= minDistance;
-    })(iconName, iconThemes, searchIconDirs, extensions)) {
-        auto path = t[0];
-        auto subdir = t[1];
-        auto theme = t[2];
-        
-        uint distance = iconSizeDistance(subdir, size);
-        if (distance < minDistance) {
-            minDistance = distance;
-            closest = path;
-        }
-        if (distance == 0) {
-            return path;
+    version(IconTheme_UseOutputRange) {
+        lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+            return minDistance!=0 && subdirFilter(subdir) && iconSizeDistance(subdir, size) <= minDistance;
+        })(iconName, iconThemes, searchIconDirs, extensions, delegate void(Tuple!(string, IconSubDir, ElementType!IconThemes) t) {
+            auto path = t[0];
+            auto subdir = t[1];
+            auto theme = t[2];
+            
+            uint distance = iconSizeDistance(subdir, size);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closest = path;
+            }
+        });
+    } else {
+        foreach(t; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+            return subdirFilter(subdir) && iconSizeDistance(subdir, size) <= minDistance;
+        })(iconName, iconThemes, searchIconDirs, extensions)) {
+            auto path = t[0];
+            auto subdir = t[1];
+            auto theme = t[2];
+            
+            uint distance = iconSizeDistance(subdir, size);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closest = path;
+            }
+            if (distance == 0) {
+                return path;
+            }
         }
     }
+    
+    
     
     if (closest.empty && allowFallback) {
         return findFallbackIcon(iconName, searchIconDirs, extensions);
@@ -458,16 +527,31 @@ string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
     uint max = 0;
     string largest;
     
-    foreach(t; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
-        return subdirFilter(subdir) && subdir.size() >= max;
-    })(iconName, iconThemes, searchIconDirs, extensions, true)) {
-        auto path = t[0];
-        auto subdir = t[1];
-        auto theme = t[2];
-        
-        if (subdir.size() > max) {
-            max = subdir.size();
-            largest = path;
+    version(IconTheme_UseOutputRange) {
+        lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+            return subdirFilter(subdir) && subdir.size() >= max;
+        })(iconName, iconThemes, searchIconDirs, extensions, delegate void(Tuple!(string, IconSubDir, ElementType!IconThemes) t) {
+            auto path = t[0];
+            auto subdir = t[1];
+            auto theme = t[2];
+            
+            if (subdir.size() > max) {
+                max = subdir.size();
+                largest = path;
+            }
+        }, Yes.reverse);
+    } else {
+        foreach(t; lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+            return subdirFilter(subdir) && subdir.size() >= max;
+        })(iconName, iconThemes, searchIconDirs, extensions, Yes.reverse)) {
+            auto path = t[0];
+            auto subdir = t[1];
+            auto theme = t[2];
+            
+            if (subdir.size() > max) {
+                max = subdir.size();
+                largest = path;
+            }
         }
     }
     

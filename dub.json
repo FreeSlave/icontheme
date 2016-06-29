@@ -12,5 +12,15 @@
     "targetPath" : "lib", 
     "targetType" : "library",
     
-    "subPackages" : ["./examples/test", "./examples/findicon", "./examples/describe", "./examples/print"]
+    "subPackages" : ["./examples/test", "./examples/findicon", "./examples/describe", "./examples/print"],
+    
+    "configurations" : [
+        {
+            "name" : "default"
+        },
+        {
+            "name" : "output",
+            "versions" : ["IconTheme_UseOutputRange"]
+        }
+    ]
 }
