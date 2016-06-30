@@ -22,7 +22,6 @@ private {
     import std.traits;
     import std.process : environment;
     import isfreedesktop;
-    import xdgpaths;
 }
 
 version(unittest) {
@@ -48,6 +47,8 @@ version(unittest) {
 
 
 static if (isFreedesktop) {
+    import xdgpaths;
+    
     /**
     * The list of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification). Available only on freedesktop systems.
     * Note: This function does not provide any caching of its results. This function does not check if directories exist.

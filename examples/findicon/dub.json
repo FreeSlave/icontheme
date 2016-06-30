@@ -6,16 +6,5 @@
     "targetPath" : "bin", 
     "targetType" : "executable", 
     "targetName" : "findicon", 
-    "dependencies" : {"icontheme":"*"},
-    "configurations" : [
-        {
-            "name" : "default"
-        },
-        {
-            "name" : "output",
-            "subConfigurations" : {
-                "icontheme" : "output"
-            }
-        }
-    ]
+    "dependencies" : {"icontheme":"*"}
 }

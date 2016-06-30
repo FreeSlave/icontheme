@@ -1,10 +1,10 @@
-# icontheme
+# Icontheme
 
 D library for dealing with icon themes in freedesktop environments.
 
 [![Build Status](https://travis-ci.org/MyLittleRobo/icontheme.svg?branch=master)](https://travis-ci.org/MyLittleRobo/icontheme) [![Coverage Status](https://coveralls.io/repos/MyLittleRobo/icontheme/badge.svg?branch=master&service=github)](https://coveralls.io/github/MyLittleRobo/icontheme?branch=master)
 
-The most of desktop environments on Linux and BSD flavors follows [Icon Theme Specification](http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html) when searching for icons.
+The most of desktop environments on GNU/Linux and BSD flavors follow [Icon Theme Specification](http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html) when searching for icons.
 The goal of **icontheme** library is to provide implementation of this specification in D programming language.
 Please feel free to propose enchancements or report any related bugs to *Issues* page.
 

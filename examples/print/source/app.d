@@ -2,6 +2,7 @@ import std.algorithm;
 import std.array;
 import std.getopt;
 import std.stdio;
+import std.path;
 
 import icontheme;
 
@@ -59,12 +60,23 @@ int main(string[] args)
             }
         }
         
+        IconSearchResult!(IconThemeFile)[][string][string] results;
+        
         foreach(item; lookupThemeIcons(iconThemes, searchIconDirs, extensions)) {
-            if (item[2] is null) {
-                writefln("Icon file: %s. Context: %s. Size: %s", item[0], item[1].context, item[1].size);
-            } else {
-                writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item[0], item[1].context, item[1].size, item[2].displayName);
+            string iconName = item.filePath.baseName.stripExtension;
+            results[iconName][item.iconTheme.displayName] ~= item;
+        }
+        
+        writefln("%s different icon names found", results.length);
+        foreach(iconName, iconResult; results) {
+            writefln("%s: ", iconName);
+            foreach(themeName, themeResult; iconResult) {
+                writefln("\t%s: ", themeName);
+                foreach(item; themeResult) {
+                    writefln("\t\tPath: %s. Context: %s. Size: %s", item.filePath, item.subdir.context, item.subdir.size);
+                }
             }
+            writeln();
         }
         
         if (includeNonThemed) {
@@ -75,6 +87,7 @@ int main(string[] args)
         }
         
     } catch(Exception e) {
+        stderr.writeln(e.msg);
         return 1;
     }
     return 0;
