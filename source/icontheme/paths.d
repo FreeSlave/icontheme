@@ -50,7 +50,9 @@ static if (isFreedesktop) {
     import xdgpaths;
     
     /**
-    * The list of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification). Available only on freedesktop systems.
+    * The list of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification).
+    * 
+    * $(BLUE This function is Freedesktop only).
     * Note: This function does not provide any caching of its results. This function does not check if directories exist.
     */
     @safe string[] baseIconDirs() nothrow
@@ -83,7 +85,7 @@ static if (isFreedesktop) {
     /**
      * Writable base icon path. Depends on XDG_DATA_HOME, so this is $HOME/.local/share/icons rather than $HOME/.icons
      * 
-     * This function is defined only on freedesktop systems.
+     * $(BLUE This function is Freedesktop only).
      * Note: it does not check if returned path exists and appears to be directory.
      */
     @safe string writableIconsPath() nothrow {

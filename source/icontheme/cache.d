@@ -184,7 +184,7 @@ final class IconThemeCache
     }
     
     /**
-     * Test if icon theme is outdated, i.e. modification time of cache file is older than modification time of icon theme directory.
+     * Test if icon theme file is outdated, i.e. modification time of cache file is older than modification time of icon theme directory.
      * Throws:
      *  $(B FileException) on error accessing the file.
      */
@@ -194,6 +194,7 @@ final class IconThemeCache
     
     /**
      * Test if icon theme file is outdated, i.e. modification time of cache file is older than modification time of icon theme directory.
+     * 
      * This function is static and therefore can be used before actual reading and validating cache file.
      * Throws:
      *  $(B FileException) on error accessing the file.

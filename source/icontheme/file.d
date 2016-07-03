@@ -36,14 +36,17 @@ public import inilike.file;
 import inilike.common;
 
 /**
- * Adapter of IniLikeGroup for easy access to icon subdirectory properties.
+ * Adapter of $(D inilike.file.IniLikeGroup) for easy access to icon subdirectory properties.
  */
 struct IconSubDir
 {
-    ///The type of icon sizes for the icons in the directory
+    ///The type of icon sizes for the icons in the directory.
     enum Type {
-        Threshold, 
+        ///Icons can be used if the size differs at some threshold from the desired size.
+        Threshold,
+        ///Icons can be used if the size does not differ from desired.
         Fixed, 
+        ///Icons are scalable without visible quality loss.
         Scalable
     }
     
@@ -286,7 +289,7 @@ final class IconThemeFile : IniLikeFile
     ///Options to manage icon theme file reading
     static struct IconThemeReadOptions
     {
-        ///Base $(B ReadOptions) of $(B IniLikeFile).
+        ///Base $(D inilike.file.IniLikeFile.ReadOptions).
         IniLikeFile.ReadOptions baseOptions = IniLikeFile.ReadOptions(IniLikeFile.DuplicateGroupPolicy.skip);
         
         alias baseOptions this;
@@ -427,7 +430,7 @@ public:
      * Reads icon theme from file.
      * Throws:
      *  $(B ErrnoException) if file could not be opened.
-     *  $(B IniLikeException) if error occured while reading the file.
+     *  $(D inilike.file.IniLikeReadException) if error occured while reading the file.
      */
     @trusted this(string fileName, IconThemeReadOptions options = IconThemeReadOptions.init) {
         this(iniLikeFileReader(fileName), options, fileName);
@@ -436,7 +439,7 @@ public:
     /**
      * Reads icon theme file from range of IniLikeReader, e.g. acquired from iniLikeFileReader or iniLikeStringReader.
      * Throws:
-     *  $(B IniLikeException) if error occured while parsing.
+     *  $(D inilike.file.IniLikeReadException) if error occured while parsing.
      */
     this(IniLikeReader)(IniLikeReader reader, IconThemeReadOptions options = IconThemeReadOptions.init, string fileName = null)
     {
@@ -445,6 +448,7 @@ public:
         enforce(_iconTheme !is null, new IniLikeReadException("No \"Icon Theme\" group", 0));
     }
     
+    ///ditto
     this(IniLikeReader)(IniLikeReader reader, string fileName, IconThemeReadOptions options = IconThemeReadOptions.init)
     {
         this(reader, options, fileName);
@@ -467,7 +471,7 @@ public:
     }
     
     /**
-     * Removes group by name. You can't remove "Icon Theme" group with this function.
+     * Removes group by name. This function will not remove "Icon Theme" group.
      */
     @safe override bool removeGroup(string groupName) nothrow {
         if (groupName != "Icon Theme") {
@@ -544,8 +548,6 @@ public:
      */
     alias iconTheme this;
     
-    
-    
     /**
      * Try to load icon cache. Loaded icon cache will be used on icon lookup.
      * Returns: Loaded IconThemeCache object or null, if cache does not exist or invalid or outdated.
@@ -590,7 +592,7 @@ public:
     
     /**
      * The object of loaded cache.
-     * Returns: IconThemeCache object loaded via tryLoadCache or set by cache property.
+     * Returns: $(D icontheme.cache.IconThemeCache) object loaded via tryLoadCache or set by cache property.
      */
     @nogc @safe inout(IconThemeCache) cache() inout nothrow {
         return _cache;
