@@ -2,7 +2,7 @@
  * Getting paths where icon themes and icons are stored.
  * 
  * Authors: 
- *  $(LINK2 https://github.com/MyLittleRobo, Roman Chistokhodov)
+ *  $(LINK2 https://github.com/FreeSlave, Roman Chistokhodov)
  * Copyright:
  *  Roman Chistokhodov, 2015-2016
  * License: 

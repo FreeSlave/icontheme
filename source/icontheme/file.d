@@ -4,7 +4,7 @@
  * Information about icon themes is stored in special files named index.theme and located in icon theme directory.
  * 
  * Authors: 
- *  $(LINK2 https://github.com/MyLittleRobo, Roman Chistokhodov)
+ *  $(LINK2 https://github.com/FreeSlave, Roman Chistokhodov)
  * Copyright:
  *  Roman Chistokhodov, 2015-2016
  * License: 

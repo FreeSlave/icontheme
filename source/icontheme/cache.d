@@ -6,7 +6,7 @@
  * Icon theme cache can be used for faster and cheeper lookup of icons since it contains information about which icons exist in which sub directories.
  * 
  * Authors: 
- *  $(LINK2 https://github.com/MyLittleRobo, Roman Chistokhodov)
+ *  $(LINK2 https://github.com/FreeSlave, Roman Chistokhodov)
  * Copyright:
  *  Roman Chistokhodov, 2016
  * License: 
