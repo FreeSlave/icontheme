@@ -98,7 +98,7 @@ catch(IniLikeException e) { // Parsing error - found icon theme file is invalid 
     
 ## Examples
 
-### [Describe icon theme](examples/describetheme/source/app.d)
+### [Describe icon theme](examples/describe/source/app.d)
 
 Prints the basic information about theme to stdout.
 
@@ -113,7 +113,7 @@ Or directory:
 
     dub run :describe -- /usr/share/icons/gnome
 
-### [Icon theme test](examples/iconthemetest/source/app.d)
+### [Icon theme test](examples/test/source/app.d)
 
 Parses all found index.theme and icon-theme.cache files in base icon directories. Writes errors (if any) to stderr.
 Use this example to check if the icontheme library can parse all themes and theme caches on your system.
@@ -144,7 +144,7 @@ Allow using cache:
 
     dub run :findicon -- --theme=gnome edit-copy --useCache
 
-### [Print icons](examples/printicons/source/app.d)
+### [Print icons](examples/print/source/app.d)
 
 Search icons in specified theme:
 

@@ -129,12 +129,12 @@ auto findIconTheme(Range)(string themeName, Range searchIconDirs)
 }
 
 /**
- * Find index.theme file for given theme and create instance of IconThemeFile. The first found file will be used.
- * Returns: IconThemeFile object read from the first found index.theme file corresponding to given theme or null if none were found.
+ * Find index.theme file for given theme and create instance of $(D icontheme.file.IconThemeFile). The first found file will be used.
+ * Returns: $(D icontheme.file.IconThemeFile) object read from the first found index.theme file corresponding to given theme or null if none were found.
  * Params:
  *  themeName = theme name.
  *  searchIconDirs = base icon directories to search icon themes.
- *  options = options for IconThemeFile reading.
+ *  options = options for $(D icontheme.file.IconThemeFile) reading.
  * Throws:
  *  $(B ErrnoException) if file could not be opened.
  *  $(B IniLikeException) if error occured while reading the file.
@@ -176,7 +176,7 @@ struct IconSearchResult(IconTheme) if (is(IconTheme : const(IconThemeFile)))
      */
     IconSubDir subdir;
     /**
-     * $(D IconThemeFile) the found icon belongs to.
+     * $(D icontheme.file.IconThemeFile) the found icon belongs to.
      */
     IconTheme iconTheme;
 }
@@ -184,7 +184,7 @@ struct IconSearchResult(IconTheme) if (is(IconTheme : const(IconThemeFile)))
 /**
  * Lookup icon alternatives in icon themes. It uses icon theme cache wherever it's loaded. If searched icon is found in some icon theme all subsequent themes are ignored.
  * 
- * This function may require many $(B stat) calls, so beware. Use subdirFilter to filter icons by $(D IconSubDir) properties (e.g. by size or context) to decrease the number of searchable items and allocations. Loading $(D icontheme.cache.IconThemeCache) may also descrease the number of stats.
+ * This function may require many $(B stat) calls, so beware. Use subdirFilter to filter icons by $(D icontheme.file.IconSubDir) properties (e.g. by size or context) to decrease the number of searchable items and allocations. Loading $(D icontheme.cache.IconThemeCache) may also descrease the number of stats.
  * 
  * Params:
  *  iconName = Icon name.
@@ -262,7 +262,7 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
  * Iterate over all icons in icon themes. 
  * iconThemes is usually the range of the main theme and themes it inherits from.
  * Note: Usually if some icon was found in icon theme, it should be ignored in all subsequent themes, including sizes not presented in former theme.
- * Use subdirFilter to filter icons by IconSubDir thus decreasing the number of searchable items and allocations.
+ * Use subdirFilter to filter icons by $(D icontheme.file.IconSubDir) thus decreasing the number of searchable items and allocations.
  * Returns: Range of $(D IconSearchResult).
  * Params:
  *  iconThemes = icon themes to search icon in.
@@ -358,7 +358,7 @@ unittest
  * Params:
  *  iconName = Name of icon to search as defined by Icon Theme Specification (i.e. without path and extension parts).
  *  size = Preferred icon size to get.
- *  iconThemes = Range of icontheme.file.IconThemeFile objects.
+ *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
  *  searchIconDirs = Base icon directories.
  *  extensions = Allowed file extensions.
  *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes (non-themed icon can be any size).
@@ -463,7 +463,7 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(s
  * Find icon of the largest size. It uses icon theme cache wherever possible.
  * Params:
  *  iconName = Name of icon to search as defined by Icon Theme Specification (i.e. without path and extension parts).
- *  iconThemes = Range of icontheme.file.IconThemeFile objects.
+ *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
  *  searchIconDirs = Base icon directories.
  *  extensions = Allowed file extensions.
  *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes.
@@ -692,9 +692,9 @@ private void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, IconThemeFi
  *  iconTheme = Original icon theme to search for its base themes. Included as first element in resulting array.
  *  searchIconDirs = Base icon directories to search icon themes.
  *  fallbackThemeName = Name of fallback theme which is loaded the last. Not used if empty. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
- *  options = Options for IconThemeFile reading.
+ *  options = Options for $(D icontheme.file.IconThemeFile) reading.
  * Returns:
- *  Array of unique IconThemeFile objects represented base themes.
+ *  Array of unique $(D icontheme.file.IconThemeFile) objects represented base themes.
  */
 IconThemeFile[] openBaseThemes(Range)(IconThemeFile iconTheme, 
                                       Range searchIconDirs, 

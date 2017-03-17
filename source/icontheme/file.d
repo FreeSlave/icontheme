@@ -550,7 +550,7 @@ public:
     
     /**
      * Try to load icon cache. Loaded icon cache will be used on icon lookup.
-     * Returns: Loaded IconThemeCache object or null, if cache does not exist or invalid or outdated.
+     * Returns: Loaded $(D icontheme.cache.IconThemeCache) object or null, if cache does not exist or invalid or outdated.
      * Note: This function expects that icon theme has fileName.
      * See_Also: $(D icontheme.cache.IconThemeCache), $(D icontheme.lookup.lookupIcon), $(D cache), $(D unloadCache), $(D cachePath)
      */
