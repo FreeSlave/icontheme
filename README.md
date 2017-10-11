@@ -127,11 +127,11 @@ Run to print names of all examined index.theme and icon-theme.cache files to std
 ### [Find icon](examples/findicon/source/app.d)
 
 Utility that finds icon by its name.
-By default search only in hicolor theme:
+By default it tries to detect the current icon theme automatically.
 
-    dub run :findicon -- nautilus
+    dub run :findicon -- edit-copy
 
-You can specify additional theme:
+You can specify another theme:
 
     dub run :findicon -- --theme=gnome folder
     dub run :findicon -- --theme=oxygen text-plain

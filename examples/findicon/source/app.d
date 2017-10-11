@@ -53,6 +53,10 @@ int main(string[] args)
         debug writeln("Using extensions: ", extensions);
         
         IconThemeFile[] iconThemes;
+        if (!theme.length) {
+            theme = currentIconThemeName();
+            debug writefln("Icon theme name is not provided in arguments. Evaluated to %s", theme);
+        }
         if (theme.length) {
             IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs);
             if (iconTheme) {
