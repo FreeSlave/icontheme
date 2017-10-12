@@ -9,8 +9,8 @@
         "xdgpaths": "~>0.2.2"
     },
     "targetName" : "icontheme",
-    "targetPath" : "lib", 
+    "targetPath" : "lib",
     "targetType" : "library",
-    
+    "versions" : ["iconthemeFileTest"],
     "subPackages" : ["./examples/test", "./examples/findicon", "./examples/describe", "./examples/print"]
 }

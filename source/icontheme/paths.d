@@ -1,13 +1,13 @@
 /**
  * Getting paths where icon themes and icons are stored.
- * 
- * Authors: 
+ *
+ * Authors:
  *  $(LINK2 https://github.com/FreeSlave, Roman Chistokhodov)
  * Copyright:
  *  Roman Chistokhodov, 2015-2017
- * License: 
+ * License:
  *  $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
- * See_Also: 
+ * See_Also:
  *  $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html, Icon Theme Specification)
  */
 
@@ -31,7 +31,7 @@ version(unittest) {
             envVar = env;
             envValue = environment.get(env);
         }
-        
+
         ~this() {
             if (envValue is null) {
                 environment.remove(envVar);
@@ -39,7 +39,7 @@ version(unittest) {
                 environment[envVar] = envValue;
             }
         }
-        
+
         string envVar;
         string envValue;
     }
@@ -48,10 +48,10 @@ version(unittest) {
 
 static if (isFreedesktop) {
     import xdgpaths;
-    
+
     /**
     * The list of base directories where icon thems should be looked for as described in $(LINK2 http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#directory_layout, Icon Theme Specification).
-    * 
+    *
     * $(BLUE This function is Freedesktop only).
     * Note: This function does not provide any caching of its results. This function does not check if directories exist.
     */
@@ -67,31 +67,31 @@ static if (isFreedesktop) {
         toReturn ~= "/usr/share/pixmaps";
         return toReturn;
     }
-    
+
     ///
     unittest
     {
         auto homeGuard = EnvGuard("HOME");
         auto dataHomeGuard = EnvGuard("XDG_DATA_HOME");
         auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS");
-        
+
         environment["HOME"] = "/home/user";
         environment["XDG_DATA_HOME"] = "/home/user/data";
         environment["XDG_DATA_DIRS"] = "/usr/local/data:/usr/data";
-        
+
         assert(baseIconDirs() == ["/home/user/.icons", "/home/user/data/icons", "/usr/local/data/icons", "/usr/data/icons", "/usr/share/pixmaps"]);
     }
-    
+
     /**
      * Writable base icon path. Depends on XDG_DATA_HOME, so this is $HOME/.local/share/icons rather than $HOME/.icons
-     * 
+     *
      * $(BLUE This function is Freedesktop only).
      * Note: it does not check if returned path exists and appears to be directory.
      */
     @safe string writableIconsPath() nothrow {
         return xdgDataHome("icons");
     }
-    
+
     ///
     unittest
     {
