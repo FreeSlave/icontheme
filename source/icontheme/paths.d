@@ -198,17 +198,20 @@ static if (isFreedesktop) {
         auto desktopGuard = EnvGuard("XDG_CURRENT_DESKTOP");
         environment["XDG_CURRENT_DESKTOP"] = "";
         assert(currentIconThemeName(IconThemeNameDetector.fallback).length);
-
-        auto homeGuard = EnvGuard("HOME");
-        environment["HOME"] = "./test";
-
-        auto configGuard = EnvGuard("XDG_CONFIG_HOME");
-        environment["XDG_CONFIG_HOME"] = "./test";
-
-        assert(currentIconThemeName() == "gnome");
-        assert(currentIconThemeName(IconThemeNameDetector.gtk3) == "gnome");
-        assert(currentIconThemeName(IconThemeNameDetector.gtk2) == "oxygen");
         assert(currentIconThemeName(IconThemeNameDetector.none).length == 0);
+
+        version(iconthemeFileTest)
+        {
+            auto homeGuard = EnvGuard("HOME");
+            environment["HOME"] = "./test";
+
+            auto configGuard = EnvGuard("XDG_CONFIG_HOME");
+            environment["XDG_CONFIG_HOME"] = "./test";
+
+            assert(currentIconThemeName() == "gnome");
+            assert(currentIconThemeName(IconThemeNameDetector.gtk3) == "gnome");
+            assert(currentIconThemeName(IconThemeNameDetector.gtk2) == "oxygen");
+        }
     }
 }
 

@@ -679,18 +679,21 @@ Key=Value`;
                  tuple("32x32/animations", 32, 32, 32, "Animations", IconSubDir.Type.Fixed),
                  tuple("scalable/emblems", 64, 8, 512, "Emblems", IconSubDir.Type.Scalable)]));
 
-    string cachePath = iconTheme.cachePath();
-    assert(cachePath.exists);
+    version(iconthemeFileTest)
+    {
+        string cachePath = iconTheme.cachePath();
+        assert(cachePath.exists);
 
-    auto cache = new IconThemeCache(cachePath);
+        auto cache = new IconThemeCache(cachePath);
 
-    assert(iconTheme.cache is null);
-    iconTheme.cache = cache;
-    assert(iconTheme.cache is cache);
-    iconTheme.unloadCache();
-    assert(iconTheme.cache is null);
+        assert(iconTheme.cache is null);
+        iconTheme.cache = cache;
+        assert(iconTheme.cache is cache);
+        iconTheme.unloadCache();
+        assert(iconTheme.cache is null);
 
-    assert(iconTheme.tryLoadCache(Flag!"allowOutdated".yes));
+        assert(iconTheme.tryLoadCache(Flag!"allowOutdated".yes));
+    }
 
     iconTheme.removeGroup("scalable/emblems");
     assert(iconTheme.group("scalable/emblems") is null);

@@ -404,7 +404,7 @@ private:
 }
 
 ///
-unittest
+version(iconthemeFileTest) unittest
 {
     string cachePath = "./test/Tango/icon-theme.cache";
     assert(cachePath.exists);

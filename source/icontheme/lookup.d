@@ -79,7 +79,7 @@ if(is(ElementType!Range : string))
 }
 
 ///
-unittest
+version(iconthemeFileTest) unittest
 {
     auto paths = iconThemePaths(["test"]).array;
     assert(paths.length == 3);
@@ -149,7 +149,7 @@ IconThemeFile openIconTheme(Range)(string themeName,
 }
 
 ///
-unittest
+version(iconthemeFileTest) unittest
 {
     auto tango = openIconTheme("Tango", ["test"]);
     assert(tango);
@@ -347,7 +347,7 @@ string findFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs
 }
 
 ///
-unittest
+version(iconthemeFileTest) unittest
 {
     assert(findFallbackIcon("pidgin", ["test"], defaultIconExtensions) == buildPath("test", "pidgin.png"));
     assert(findFallbackIcon("nonexistent", ["test"], defaultIconExtensions).empty);
@@ -393,7 +393,7 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
 }
 
 ///
-unittest
+version(iconthemeFileTest) unittest
 {
     auto baseDirs = ["test"];
     auto iconThemes = [openIconTheme("Tango", baseDirs), openIconTheme("hicolor", baseDirs)];
@@ -497,7 +497,7 @@ string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, E
 }
 
 ///
-unittest
+version(iconthemeFileTest) unittest
 {
     auto baseDirs = ["test"];
     auto iconThemes = [openIconTheme("Tango", baseDirs), openIconTheme("hicolor", baseDirs)];
@@ -720,7 +720,7 @@ if(isForwardRange!Range && is(ElementType!Range : string))
 }
 
 ///
-unittest
+version(iconthemeFileTest) unittest
 {
     auto tango = openIconTheme("NewTango", ["test"]);
     auto baseThemes = openBaseThemes(tango, ["test"]);
