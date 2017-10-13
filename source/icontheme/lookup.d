@@ -54,6 +54,11 @@ package {
 enum defaultIconExtensions = [".png", ".xpm"];
 
 /**
+ * Convenient constant for the default icon theme name.
+ */
+enum defaultFallbackIconTheme = "hicolor";
+
+/**
  * Find all icon themes in searchIconDirs.
  * Note:
  *  You may want to skip icon themes duplicates if there're different versions of the index.theme file for the same theme.
@@ -178,7 +183,7 @@ struct IconSearchResult(IconTheme) if (is(IconTheme : const(IconThemeFile)))
     /**
      * $(D icontheme.file.IconThemeFile) the found icon belongs to.
      */
-    IconTheme iconTheme;
+    Rebindable!IconTheme iconTheme;
 }
 
 /**
@@ -313,7 +318,7 @@ if (isInputRange!(BaseDirs) && isForwardRange!(Exts) &&
 }
 
 /**
- * Lookup icon alternatives beyond the icon themes. May be used as fallback lookup, if lookupIcon returned empty range.
+ * Lookup icon alternatives beyond the icon themes. May be used as fallback lookup, if $(D lookupIcon) returned empty range.
  * Returns: The range of found icon file paths.
  * Example:
 ----------
@@ -354,37 +359,129 @@ version(iconthemeFileTest) unittest
 }
 
 /**
- * Find icon closest of the size. It uses icon theme cache wherever possible. The first perfect match is used.
+ * Find icon of the closest size. It uses icon theme cache wherever possible. The first perfect match is used. It searches only for icons in themes.
  * Params:
  *  iconName = Name of icon to search as defined by Icon Theme Specification (i.e. without path and extension parts).
- *  size = Preferred icon size to get.
+ *  desiredSize = Preferred icon size to get.
+ *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
+ *  searchIconDirs = Base icon directories.
+ *  extensions = Allowed file extensions.
+ * Returns: $(D IconSearchResult) with icon file path and $(D icontheme.file.IconSubDir) and $(D icontheme.file.IconThemeFile) it belongs to. Path will be empty if icon is not found.
+ * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with closer size. Therefore the icon found in the more preferred theme always has presedence over icons from other themes.
+ * See_Also: $(D findClosestIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D iconSizeDistance)
+ */
+auto findClosestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint desiredSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
+{
+    uint minDistance = uint.max;
+    IconSearchResult!(ElementType!IconThemes) closest;
+
+    lookupIcon!(delegate bool(const(IconSubDir) subdir) {
+        return minDistance != 0 && subdirFilter(subdir) && iconSizeDistance(subdir, desiredSize) <= minDistance;
+    })(iconName, iconThemes, searchIconDirs, extensions, delegate void(IconSearchResult!(ElementType!IconThemes) t) {
+        uint distance = iconSizeDistance(t.subdir, desiredSize);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closest = t;
+        }
+    });
+    return closest;
+}
+
+///
+version(iconthemeFileTest) unittest
+{
+    auto baseDirs = ["test"];
+    auto iconThemes = [openIconTheme("Tango", baseDirs), openIconTheme("hicolor", baseDirs)];
+
+    //exact match
+    auto found = findClosestThemedIcon("folder", 32, iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "32x32/places", "folder.png"));
+    assert(found.subdir.size == 32);
+    assert(found.subdir.context == "Places");
+    assert(found.iconTheme.internalName == "Tango");
+
+    found = findClosestThemedIcon("folder", 24, iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "24x24/devices", "folder.png"));
+    assert(found.subdir.size == 24);
+    assert(found.subdir.context == "Devices");
+
+    // with subdir filter
+    found = findClosestThemedIcon!(subdir => subdir.context == "Places")("folder", 32, iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "32x32/places", "folder.png"));
+    assert(found.subdir.size == 32);
+
+    // non-exact match
+    found = findClosestThemedIcon!(subdir => subdir.context == "Places")("folder", 24, iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "32x32/places", "folder.png"));
+    assert(found.subdir.size == 32);
+
+    // no match, wrong subdir
+    found = findClosestThemedIcon!(subdir => subdir.context == "MimeTypes")("folder", 32, iconThemes, baseDirs);
+    assert(found.filePath.empty);
+
+    //hicolor has exact match, but Tango is more preferred.
+    found = findClosestThemedIcon("folder", 64, iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "32x32/places", "folder.png"));
+    assert(found.subdir.size == 32);
+
+    //find xpm
+    found = findClosestThemedIcon("folder", 32, iconThemes, baseDirs, [".xpm"]);
+    assert(found.filePath == buildPath("test", "Tango", "32x32/places", "folder.xpm"));
+    assert(found.subdir.size == 32);
+
+    //find big png, not exact match
+    found = findClosestThemedIcon("folder", 200, iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "128x128/places", "folder.png"));
+    assert(found.subdir.size == 128);
+
+    //svg is closer
+    found = findClosestThemedIcon("folder", 200, iconThemes, baseDirs, [".png", ".svg"]);
+    assert(found.filePath == buildPath("test", "Tango", "scalable/places", "folder.svg"));
+    assert(found.subdir.type == IconSubDir.Type.Scalable);
+
+    // exact match in hicolor
+    found = findClosestThemedIcon("text-plain", 48, iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "hicolor", "48x48/mimetypes", "text-plain.png"));
+    assert(found.subdir.size == 48);
+    assert(found.subdir.context == "MimeTypes");
+    assert(found.iconTheme.internalName == "hicolor");
+
+    // with subdir filter
+    found = findClosestThemedIcon!(subdir => subdir.context == "MimeTypes")("text-plain", 48, iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "hicolor", "48x48/mimetypes", "text-plain.png"));
+    assert(found.subdir.size == 48);
+
+    // no match
+    found = findClosestThemedIcon!(subdir => subdir.context == "Actions")("text-plain", 48, iconThemes, baseDirs);
+    assert(found.filePath.empty);
+}
+
+/**
+ * ditto, but with predefined extensions.
+ * See_Also: $(D defaultIconExtensions)
+ */
+auto findClosestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs)
+{
+    return findClosestThemedIcon!subdirFilter(iconName, size, iconThemes, searchIconDirs, defaultIconExtensions);
+}
+
+/**
+ * Find icon of the closest size. It uses icon theme cache wherever possible. The first perfect match is used.
+ * This is similar to $(D findClosestThemedIcon), but returns file path only and allows to search for non-themed icons.
+ * Params:
+ *  iconName = Name of icon to search as defined by Icon Theme Specification (i.e. without path and extension parts).
+ *  desiredSize = Preferred icon size to get.
  *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
  *  searchIconDirs = Base icon directories.
  *  extensions = Allowed file extensions.
  *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes (non-themed icon can be any size).
  * Returns: Icon file path or empty string if not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with closer size. Therefore the icon found in the more preferred theme always has presedence over icons from other themes.
- * See_Also: $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon), $(D iconSizeDistance)
+ * See_Also: $(D findClosestThemedIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon), $(D iconSizeDistance)
  */
-string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
+string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint desiredSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
 {
-    uint minDistance = uint.max;
-    string closest;
-
-    lookupIcon!(delegate bool(const(IconSubDir) subdir) {
-        return minDistance != 0 && subdirFilter(subdir) && iconSizeDistance(subdir, size) <= minDistance;
-    })(iconName, iconThemes, searchIconDirs, extensions, delegate void(IconSearchResult!(ElementType!IconThemes) t) {
-        auto path = t.filePath;
-        auto subdir = t.subdir;
-        auto theme = t.iconTheme;
-
-        uint distance = iconSizeDistance(subdir, size);
-        if (distance < minDistance) {
-            minDistance = distance;
-            closest = path;
-        }
-    });
-
+    string closest = findClosestThemedIcon!subdirFilter(iconName, desiredSize, iconThemes, searchIconDirs, extensions).filePath;
     if (closest.empty && allowFallback) {
         return findFallbackIcon(iconName, searchIconDirs, extensions);
     } else {
@@ -404,15 +501,15 @@ version(iconthemeFileTest) unittest
     found = findClosestIcon("folder", 32, iconThemes, baseDirs);
     assert(found == buildPath("test", "Tango", "32x32/places", "folder.png"));
 
-    found = findClosestIcon("folder", 24, iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "24x24/devices", "folder.png"));
-
+    // with subdir filter
     found = findClosestIcon!(subdir => subdir.context == "Places")("folder", 32, iconThemes, baseDirs);
     assert(found == buildPath("test", "Tango", "32x32/places", "folder.png"));
 
+    // not exact match
     found = findClosestIcon!(subdir => subdir.context == "Places")("folder", 24, iconThemes, baseDirs);
     assert(found == buildPath("test", "Tango", "32x32/places", "folder.png"));
 
+    // no match, wrong subdir
     found = findClosestIcon!(subdir => subdir.context == "MimeTypes")("folder", 32, iconThemes, baseDirs);
     assert(found.empty);
 
@@ -424,29 +521,12 @@ version(iconthemeFileTest) unittest
     found = findClosestIcon("folder", 32, iconThemes, baseDirs, [".xpm"]);
     assert(found == buildPath("test", "Tango", "32x32/places", "folder.xpm"));
 
-    //find big png, not exact match
-    found = findClosestIcon("folder", 200, iconThemes, baseDirs);
-    assert(found == buildPath("test", "Tango", "128x128/places", "folder.png"));
-
-    //svg is closer
-    found = findClosestIcon("folder", 200, iconThemes, baseDirs, [".png", ".svg"]);
-    assert(found == buildPath("test", "Tango", "scalable/places", "folder.svg"));
-
     //lookup with fallback
     found = findClosestIcon("pidgin", 96, iconThemes, baseDirs);
     assert(found == buildPath("test", "pidgin.png"));
 
     //lookup without fallback
     found = findClosestIcon("pidgin", 96, iconThemes, baseDirs, defaultIconExtensions, No.allowFallbackIcon);
-    assert(found.empty);
-
-    found = findClosestIcon("text-plain", 48, iconThemes, baseDirs);
-    assert(found == buildPath("test", "hicolor", "48x48/mimetypes", "text-plain.png"));
-
-    found = findClosestIcon!(subdir => subdir.context == "MimeTypes")("text-plain", 48, iconThemes, baseDirs);
-    assert(found == buildPath("test", "hicolor", "48x48/mimetypes", "text-plain.png"));
-
-    found = findClosestIcon!(subdir => subdir.context == "Actions")("text-plain", 48, iconThemes, baseDirs);
     assert(found.empty);
 }
 
@@ -466,28 +546,80 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(s
  *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
  *  searchIconDirs = Base icon directories.
  *  extensions = Allowed file extensions.
- *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes.
  * Returns: Icon file path or empty string if not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with larger size. Therefore the icon found in the most preferred theme always has presedence over icons from other themes.
- * See_Also: $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon)
+ * See_Also: $(D findLargestIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon)
  */
-string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
+auto findLargestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
 {
     uint max = 0;
-    string largest;
+    IconSearchResult!(ElementType!IconThemes) largest;
 
     lookupIcon!(delegate bool(const(IconSubDir) subdir) {
         return subdirFilter(subdir) && subdir.size() >= max;
     })(iconName, iconThemes, searchIconDirs, extensions, delegate void(IconSearchResult!(ElementType!IconThemes) t) {
-        auto path = t.filePath;
-        auto subdir = t.subdir;
-        auto theme = t.iconTheme;
-
-        if (subdir.size() > max) {
-            max = subdir.size();
-            largest = path;
+        if (t.subdir.size() > max) {
+            max = t.subdir.size();
+            largest = t;
         }
     }, Yes.reverse);
+
+    return largest;
+}
+
+///
+version(iconthemeFileTest) unittest
+{
+    auto baseDirs = ["test"];
+    auto iconThemes = [openIconTheme("Tango", baseDirs), openIconTheme("hicolor", baseDirs)];
+
+    auto found = findLargestThemedIcon("folder", iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "128x128/places", "folder.png"));
+    assert(found.subdir.size == 128);
+    assert(found.subdir.context == "Places");
+    assert(found.iconTheme.internalName == "Tango");
+
+    found = findLargestThemedIcon!(subdir => subdir.context == "Places")("folder", iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "128x128/places", "folder.png"));
+
+    found = findLargestThemedIcon!(subdir => subdir.context == "Actions")("folder", iconThemes, baseDirs);
+    assert(found.filePath.empty);
+
+    found = findLargestThemedIcon("desktop", iconThemes, baseDirs);
+    assert(found.filePath == buildPath("test", "Tango", "32x32/places", "desktop.png"));
+    assert(found.subdir.size == 32);
+
+    found = findLargestThemedIcon("desktop", iconThemes, baseDirs, [".svg", ".png"]);
+    assert(found.filePath == buildPath("test", "Tango", "scalable/places", "desktop.svg"));
+    assert(found.subdir.type == IconSubDir.Type.Scalable);
+}
+
+/**
+ * ditto, but with predefined extensions.
+ * See_Also: $(D defaultIconExtensions)
+ */
+auto findLargestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs)
+{
+    return findLargestThemedIcon!subdirFilter(iconName, iconThemes, searchIconDirs, defaultIconExtensions);
+}
+
+/**
+ * Find icon of the largest size. It uses icon theme cache wherever possible.
+ * This is similar to $(D findLargestThemedIcon), but returns file path only and allows to search for non-themed icons.
+ * Params:
+ *  iconName = Name of icon to search as defined by Icon Theme Specification (i.e. without path and extension parts).
+ *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
+ *  searchIconDirs = Base icon directories.
+ *  extensions = Allowed file extensions.
+ *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes.
+ * Returns: Icon file path or empty string if not found.
+ * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with larger size. Therefore the icon found in the most preferred theme always has presedence over icons from other themes.
+ * See_Also: $(D findLargestThemedIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon)
+ */
+string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
+{
+    uint max = 0;
+    string largest = findLargestThemedIcon!subdirFilter(iconName, iconThemes, searchIconDirs, extensions).filePath;
 
     if (largest.empty && allowFallback) {
         return findFallbackIcon(iconName, searchIconDirs, extensions);
@@ -506,6 +638,12 @@ version(iconthemeFileTest) unittest
 
     found = findLargestIcon("folder", iconThemes, baseDirs);
     assert(found == buildPath("test", "Tango", "128x128/places", "folder.png"));
+
+    found = findLargestIcon!(subdir => subdir.context == "Places")("folder", iconThemes, baseDirs);
+    assert(found == buildPath("test", "Tango", "128x128/places", "folder.png"));
+
+    found = findLargestIcon!(subdir => subdir.context == "Actions")("folder", iconThemes, baseDirs);
+    assert(found.empty);
 
     found = findLargestIcon("desktop", iconThemes, baseDirs);
     assert(found == buildPath("test", "Tango", "32x32/places", "desktop.png"));
@@ -689,16 +827,18 @@ private void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, IconThemeFi
 /**
  * Recursively find all themes the given theme is inherited from.
  * Params:
- *  iconTheme = Original icon theme to search for its base themes. Included as first element in resulting array.
+ *  iconTheme = Original icon theme to search for its base themes. It's NOT included in the resulting array.
  *  searchIconDirs = Base icon directories to search icon themes.
  *  fallbackThemeName = Name of fallback theme which is loaded the last. Not used if empty. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
  *  options = Options for $(D icontheme.file.IconThemeFile) reading.
  * Returns:
  *  Array of unique $(D icontheme.file.IconThemeFile) objects represented base themes.
+ * See_Also:
+ *  $(D openThemeFamily)
  */
 IconThemeFile[] openBaseThemes(Range)(IconThemeFile iconTheme,
                                       Range searchIconDirs,
-                                      string fallbackThemeName = "hicolor",
+                                      string fallbackThemeName = defaultFallbackIconTheme,
                                       IconThemeFile.IconThemeReadOptions options = IconThemeFile.IconThemeReadOptions.init)
 if(isForwardRange!Range && is(ElementType!Range : string))
 {
@@ -732,4 +872,58 @@ version(iconthemeFileTest) unittest
     baseThemes = openBaseThemes(tango, ["test"], null);
     assert(baseThemes.length == 1);
     assert(baseThemes[0].internalName() == "Tango");
+}
+
+/**
+ * Recursively find all themes the given theme is inherited from.
+ * Params:
+ *  iconTheme = Original icon theme to search for its base themes. Included as first element in the resulting array.
+ *  searchIconDirs = Base icon directories to search icon themes.
+ *  fallbackThemeName = Name of fallback theme which is loaded the last. Not used if empty. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
+ *  options = Options for $(D icontheme.file.IconThemeFile) reading.
+ * Returns:
+ *  Array of unique $(D icontheme.file.IconThemeFile) objects represented the provided icon theme and its base themes.
+ * See_Also:
+ *  $(D openBaseThemes)
+ */
+IconThemeFile[] openThemeFamily(Range)(IconThemeFile iconTheme,
+                                      Range searchIconDirs,
+                                      string fallbackThemeName = defaultFallbackIconTheme,
+                                      IconThemeFile.IconThemeReadOptions options = IconThemeFile.IconThemeReadOptions.init)
+if(isForwardRange!Range && is(ElementType!Range : string))
+{
+    IconThemeFile[] toReturn;
+    toReturn ~= iconTheme;
+    toReturn ~= openBaseThemes(iconTheme, searchIconDirs, fallbackThemeName, options);
+    return toReturn;
+}
+
+/// ditto, but firstly loads the given icon theme by name.
+IconThemeFile[] openThemeFamily(Range)(string iconThemeName,
+                                      Range searchIconDirs,
+                                      string fallbackThemeName = defaultFallbackIconTheme,
+                                      IconThemeFile.IconThemeReadOptions options = IconThemeFile.IconThemeReadOptions.init)
+if(isForwardRange!Range && is(ElementType!Range : string))
+{
+    auto iconTheme = openIconTheme(iconThemeName, searchIconDirs, options);
+    if (iconTheme) {
+        return openThemeFamily(iconTheme, searchIconDirs, fallbackThemeName, options);
+    }
+    return typeof(return).init;
+}
+
+///
+version(iconthemeFileTest) unittest
+{
+    auto iconThemes = openThemeFamily("NewTango", ["test"]);
+
+    assert(iconThemes.length == 3);
+    assert(iconThemes[0].internalName() == "NewTango");
+    assert(iconThemes[1].internalName() == "Tango");
+    assert(iconThemes[2].internalName() == "hicolor");
+
+    iconThemes = openThemeFamily("NewTango", ["test"], null);
+    assert(iconThemes.length == 2);
+    assert(iconThemes[0].internalName() == "NewTango");
+    assert(iconThemes[1].internalName() == "Tango");
 }

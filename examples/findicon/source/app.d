@@ -58,13 +58,9 @@ int main(string[] args)
             debug writefln("Icon theme name is not provided in arguments. Evaluated to %s", theme);
         }
         if (theme.length) {
-            IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs);
-            if (iconTheme) {
-                iconThemes ~= iconTheme;
-                iconThemes ~= openBaseThemes(iconTheme, searchIconDirs);
-            }
+            iconThemes = openThemeFamily(theme, searchIconDirs);
         } else {
-            IconThemeFile fallbackTheme = openIconTheme("hicolor", searchIconDirs);
+            IconThemeFile fallbackTheme = openIconTheme(defaultFallbackIconTheme, searchIconDirs);
             if (fallbackTheme) {
                 iconThemes ~= fallbackTheme;
             }
