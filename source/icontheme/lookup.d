@@ -550,7 +550,7 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(s
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with larger size. Therefore the icon found in the most preferred theme always has presedence over icons from other themes.
  * See_Also: $(D findLargestIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon)
  */
-auto findLargestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
+auto findLargestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
     uint max = 0;
     IconSearchResult!(ElementType!IconThemes) largest;
