@@ -27,9 +27,10 @@ private {
 version(unittest) {
     package struct EnvGuard
     {
-        this(string env) {
+        this(string env, string newValue) {
             envVar = env;
             envValue = environment.get(env);
+            environment[env] = newValue;
         }
 
         ~this() {
@@ -71,13 +72,9 @@ static if (isFreedesktop) {
     ///
     unittest
     {
-        auto homeGuard = EnvGuard("HOME");
-        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME");
-        auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS");
-
-        environment["HOME"] = "/home/user";
-        environment["XDG_DATA_HOME"] = "/home/user/data";
-        environment["XDG_DATA_DIRS"] = "/usr/local/data:/usr/data";
+        auto homeGuard = EnvGuard("HOME", "/home/user");
+        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME", "/home/user/data");
+        auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS", "/usr/local/data:/usr/data");
 
         assert(baseIconDirs() == ["/home/user/.icons", "/home/user/data/icons", "/usr/local/data/icons", "/usr/data/icons", "/usr/share/pixmaps"]);
     }
@@ -95,8 +92,7 @@ static if (isFreedesktop) {
     ///
     unittest
     {
-        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME");
-        environment["XDG_DATA_HOME"] = "/home/user/data";
+        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME", "/home/user/data");
         assert(writableIconsPath() == "/home/user/data/icons");
     }
 
@@ -104,11 +100,19 @@ static if (isFreedesktop) {
     enum IconThemeNameDetector
     {
         none = 0,
-        fallback = 1, /// Use hardcoded fallback to detect icon theme name depending on the current desktop environment. Has lower priority than other methods.
-        gtk2 = 2, /// Use gtk2 settings to detect icon theme name. Has lower priority than gtk3.
+        fallback = 1, /// Use hardcoded fallback to detect icon theme name depending on the current desktop environment. Has the lowest priority.
+        gtk2 = 2, /// Use gtk2 settings to detect icon theme name. Has lower priority than gtk3 when using both flags.
         gtk3 = 4, /// Use gtk3 settings to detect icon theme name.
-        automatic =  fallback | gtk2 | gtk3 /// Use all known means to detect icon theme name.
+        kde = 8, /// Use kde settings to detect icon theme name when the current desktop is KDE4 or KDE5. Has the highest priority when using with other flags.
+        automatic =  fallback | gtk2 | gtk3 | kde /// Use all known means to detect icon theme name.
     }
+
+    private @trusted string xdgCurrentDesktop() {
+        string currentDesktop;
+        collectException(environment.get("XDG_CURRENT_DESKTOP"), currentDesktop);
+        return currentDesktop;
+    }
+
     /**
     * Try to detect the current icon name configured by user.
     *
@@ -120,8 +124,7 @@ static if (isFreedesktop) {
     {
         @trusted static string fallbackIconThemeName()
         {
-            string xdgCurrentDesktop = environment.get("XDG_CURRENT_DESKTOP");
-            switch(xdgCurrentDesktop) {
+            switch(xdgCurrentDesktop()) {
                 case "GNOME":
                 case "X-Cinnamon":
                 case "MATE":
@@ -136,55 +139,106 @@ static if (isFreedesktop) {
                     return "Tango";
             }
         }
-        @trusted static string gtk2IconThemeName() nothrow
+        @trusted static string gtk2IconThemeName()
         {
             import std.stdio : File;
-            try {
-                auto home = environment.get("HOME");
-                if (!home.length) {
-                    return null;
-                }
-                string themeName;
-                auto gtkConfig = buildPath(home, ".gtkrc-2.0");
-                auto f = File(gtkConfig, "r");
-                foreach(line; f.byLine()) {
-                    auto splitted = line.findSplit("=");
-                    if (splitted[0] == "gtk-icon-theme-name") {
-                        if (splitted[2].length > 2 && splitted[2][0] == '"' && splitted[2][$-1] == '"') {
-                            return splitted[2][1..$-1].idup;
+            import std.string : stripLeft, stripRight;
+            auto home = environment.get("HOME");
+            if (!home.length) {
+                return null;
+            }
+            auto gtkConfigs = [buildPath(home, ".gtkrc-2.0"), "/etc/gtk-2.0/gtkrc"];
+            foreach(gtkConfig; gtkConfigs) {
+                try {
+                    auto f = File(gtkConfig, "r");
+                    foreach(line; f.byLine()) {
+                        auto splitted = line.findSplit("=");
+                        splitted[0] = splitted[0].stripRight;
+                        if (splitted[0] == "gtk-icon-theme-name") {
+                            splitted[2] = splitted[2].stripLeft;
+                            if (splitted[2].length > 2 && splitted[2][0] == '"' && splitted[2][$-1] == '"') {
+                                return splitted[2][1..$-1].idup;
+                            }
+                            break;
                         }
-                        break;
                     }
+                } catch(Exception e) {
+                    continue;
                 }
-            } catch(Exception e) {
-
             }
             return null;
         }
-        @trusted static string gtk3IconThemeName() nothrow
+        @trusted static string gtk3IconThemeName()
         {
             import inilike.file;
-            try {
-                auto f = new IniLikeFile(xdgConfigHome("gtk-3.0/settings.ini"), IniLikeFile.ReadOptions(No.preserveComments));
-                auto settings = f.group("Settings");
-                if (settings)
-                    return settings.readEntry("gtk-icon-theme-name");
-            } catch(Exception e) {
-
+            auto gtkConfigs = [xdgConfigHome("gtk-3.0/settings.ini"), "/etc/gtk-3.0/settings.ini"];
+            foreach(gtkConfig; gtkConfigs) {
+                try {
+                    auto f = new IniLikeFile(gtkConfig, IniLikeFile.ReadOptions(No.preserveComments));
+                    auto settings = f.group("Settings");
+                    if (settings)
+                        return settings.readEntry("gtk-icon-theme-name");
+                } catch(Exception e) {
+                    continue;
+                }
+            }
+            return null;
+        }
+        @trusted static string kdeIconThemeName()
+        {
+            import inilike.file;
+            import std.conv : to;
+            ubyte kdeVersion;
+            auto kdeException = collectException(environment.get("KDE_SESSION_VERSION").to!ubyte, kdeVersion);
+            if (kdeException) {
+                return null;
+            }
+            if (kdeVersion < 4) {
+                return null;
+            }
+            string[] kdeConfigPaths;
+            immutable kdeglobals = "kdeglobals";
+            if (kdeVersion >= 5) {
+                kdeConfigPaths = xdgAllConfigDirs(kdeglobals);
+            } else {
+                auto home = environment.get("HOME");
+                if (home.length) {
+                    kdeConfigPaths ~= buildPath(home, ".kde4", kdeglobals);
+                    kdeConfigPaths ~= buildPath(home, ".kde", kdeglobals);
+                    kdeConfigPaths ~= "/etc/kde4/kdeglobals";
+                }
+            }
+            foreach(kdeConfigPath; kdeConfigPaths) {
+                try {
+                    import std.file :exists;
+                    auto config = new IniLikeFile(kdeConfigPath);
+                    auto icons = config.group("Icons");
+                    if (icons) {
+                        auto theme = icons.readEntry("Theme");
+                        if (theme.length && baseName(theme) == theme) {
+                            return theme;
+                        }
+                    }
+                } catch(Exception e) {
+                    continue;
+                }
             }
             return null;
         }
 
         try {
             string themeName;
-            if (detector & IconThemeNameDetector.gtk3) {
-                themeName = gtk3IconThemeName();
+            if (xdgCurrentDesktop() == "KDE" && (detector & IconThemeNameDetector.kde)) {
+                collectException(kdeIconThemeName(), themeName);
+            }
+            if (!themeName.length && (detector & IconThemeNameDetector.gtk3)) {
+                collectException(gtk3IconThemeName(), themeName);
             }
             if (!themeName.length && (detector & IconThemeNameDetector.gtk2)) {
-                themeName = gtk2IconThemeName();
+                collectException(gtk2IconThemeName(), themeName);
             }
             if (!themeName.length && (detector & IconThemeNameDetector.fallback)) {
-                themeName = fallbackIconThemeName();
+                collectException(fallbackIconThemeName(), themeName);
             }
             return themeName;
         } catch(Exception e) {
@@ -195,22 +249,31 @@ static if (isFreedesktop) {
 
     unittest
     {
-        auto desktopGuard = EnvGuard("XDG_CURRENT_DESKTOP");
-        environment["XDG_CURRENT_DESKTOP"] = "";
+        auto desktopGuard = EnvGuard("XDG_CURRENT_DESKTOP", "");
         assert(currentIconThemeName(IconThemeNameDetector.fallback).length);
         assert(currentIconThemeName(IconThemeNameDetector.none).length == 0);
+        assert(currentIconThemeName(IconThemeNameDetector.kde).length == 0);
 
         version(iconthemeFileTest)
         {
-            auto homeGuard = EnvGuard("HOME");
-            environment["HOME"] = "./test";
-
-            auto configGuard = EnvGuard("XDG_CONFIG_HOME");
-            environment["XDG_CONFIG_HOME"] = "./test";
+            auto homeGuard = EnvGuard("HOME", "./test");
+            auto configGuard = EnvGuard("XDG_CONFIG_HOME", "./test");
 
             assert(currentIconThemeName() == "gnome");
             assert(currentIconThemeName(IconThemeNameDetector.gtk3) == "gnome");
             assert(currentIconThemeName(IconThemeNameDetector.gtk2) == "oxygen");
+
+            {
+                auto desktop = EnvGuard("XDG_CURRENT_DESKTOP", "KDE");
+                auto kdeVersion = EnvGuard("KDE_SESSION_VERSION", "5");
+                assert(currentIconThemeName(IconThemeNameDetector.kde) == "breeze");
+            }
+
+            {
+                auto desktop = EnvGuard("XDG_CURRENT_DESKTOP", "KDE");
+                auto kdeVersion = EnvGuard("KDE_SESSION_VERSION", "4");
+                assert(currentIconThemeName(IconThemeNameDetector.kde) == "default.kde4");
+            }
         }
     }
 }

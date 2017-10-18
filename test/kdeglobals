@@ -1,0 +1,11 @@
+[$Version]
+update_info=fonts_global.upd:Fonts_Global
+
+[Icons]
+Theme=breeze
+
+[KDE]
+ColorScheme=Breeze
+ShowDeleteCommand=false
+contrast=4
+widgetStyle=Breeze
