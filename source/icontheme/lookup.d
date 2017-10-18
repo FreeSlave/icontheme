@@ -56,7 +56,10 @@ enum defaultIconExtensions = [".png", ".xpm"];
 /**
  * Convenient constant for the default icon theme name.
  */
-enum defaultFallbackIconTheme = "hicolor";
+enum defaultGenericIconTheme = "hicolor";
+
+///
+deprecated("use defaultGenericIconTheme") alias defaultFallbackIconTheme = defaultGenericIconTheme;
 
 /**
  * Find all icon themes in searchIconDirs.
@@ -209,7 +212,7 @@ lookupIcon!(subdir => subdir.context == "Places" && subdir.size >= 32)(
         writefln("Icon file: %s. Context: %s. Size: %s. Theme: %s", item.filePath, item.subdir.context, item.subdir.size, item.iconTheme.displayName);
     });
 ----------
- * See_Also: $(D icontheme.paths.baseIconDirs), $(D lookupFallbackIcon)
+ * See_Also: $(D icontheme.paths.baseIconDirs), $(D lookupNonThemedIcon)
  */
 void lookupIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts, OutputRange)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, OutputRange sink, Flag!"reverse" reverse = No.reverse)
 if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Exts) &&
@@ -306,9 +309,9 @@ if (is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs
  *  searchIconDirs = base icon directories.
  *  extensions = possible file extensions for icon files.
  * See_Also:
- *  $(D lookupFallbackIcon), $(D icontheme.paths.baseIconDirs)
+ *  $(D lookupNonThemedIcon), $(D icontheme.paths.baseIconDirs)
  */
-auto lookupFallbackIcons(BaseDirs, Exts)(BaseDirs searchIconDirs, Exts extensions)
+auto lookupNonThemedIcons(BaseDirs, Exts)(BaseDirs searchIconDirs, Exts extensions)
 if (isInputRange!(BaseDirs) && isForwardRange!(Exts) &&
     is(ElementType!BaseDirs : string) && is(ElementType!Exts : string))
 {
@@ -317,16 +320,18 @@ if (isInputRange!(BaseDirs) && isForwardRange!(Exts) &&
     )).joiner;
 }
 
+deprecated alias lookupFallbackIcons = lookupNonThemedIcons;
+
 /**
  * Lookup icon alternatives beyond the icon themes. May be used as fallback lookup, if $(D lookupIcon) returned empty range.
  * Returns: The range of found icon file paths.
  * Example:
 ----------
-auto result = lookupFallbackIcon("folder", baseIconDirs(), [".png", ".xpm"]);
+auto result = lookupNonThemedIcon("folder", baseIconDirs(), [".png", ".xpm"]);
 ----------
- * See_Also: $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D lookupFallbackIcons)
+ * See_Also: $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D lookupNonThemedIcons)
  */
-auto lookupFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
+auto lookupNonThemedIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
 if (isInputRange!(BaseDirs) && isForwardRange!(Exts) &&
     is(ElementType!BaseDirs : string) && is(ElementType!Exts : string))
 {
@@ -337,13 +342,15 @@ if (isInputRange!(BaseDirs) && isForwardRange!(Exts) &&
     ).joiner;
 }
 
+deprecated alias lookupFallbackIcon = lookupNonThemedIcon;
+
 /**
- * Find fallback icon outside of icon themes. The first found is returned.
- * See_Also: $(D lookupFallbackIcon), $(D icontheme.paths.baseIconDirs)
+ * Find icon outside of icon themes. The first found is returned.
+ * See_Also: $(D lookupNonThemedIcon), $(D icontheme.paths.baseIconDirs)
  */
-string findFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
+string findNonThemedIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs, Exts extensions)
 {
-    auto r = lookupFallbackIcon(iconName, searchIconDirs, extensions);
+    auto r = lookupNonThemedIcon(iconName, searchIconDirs, extensions);
     if (r.empty) {
         return null;
     } else {
@@ -354,9 +361,11 @@ string findFallbackIcon(BaseDirs, Exts)(string iconName, BaseDirs searchIconDirs
 ///
 version(iconthemeFileTest) unittest
 {
-    assert(findFallbackIcon("pidgin", ["test"], defaultIconExtensions) == buildPath("test", "pidgin.png"));
-    assert(findFallbackIcon("nonexistent", ["test"], defaultIconExtensions).empty);
+    assert(findNonThemedIcon("pidgin", ["test"], defaultIconExtensions) == buildPath("test", "pidgin.png"));
+    assert(findNonThemedIcon("nonexistent", ["test"], defaultIconExtensions).empty);
 }
+
+deprecated alias findFallbackIcon = findNonThemedIcon;
 
 /**
  * Find icon of the closest size. It uses icon theme cache wherever possible. The first perfect match is used. It searches only for icons in themes.
@@ -474,16 +483,16 @@ auto findClosestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDir
  *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
  *  searchIconDirs = Base icon directories.
  *  extensions = Allowed file extensions.
- *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes (non-themed icon can be any size).
+ *  allowNonThemed = Allow searching for non-themed icon if could not find icon in themes (non-themed icon can be any size).
  * Returns: Icon file path or empty string if not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with closer size. Therefore the icon found in the more preferred theme always has presedence over icons from other themes.
- * See_Also: $(D findClosestThemedIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon), $(D iconSizeDistance)
+ * See_Also: $(D findClosestThemedIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findNonThemedIcon), $(D iconSizeDistance)
  */
-string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint desiredSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
+string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint desiredSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowNonThemed" allowNonThemed = Yes.allowNonThemed)
 {
     string closest = findClosestThemedIcon!subdirFilter(iconName, desiredSize, iconThemes, searchIconDirs, extensions).filePath;
-    if (closest.empty && allowFallback) {
-        return findFallbackIcon(iconName, searchIconDirs, extensions);
+    if (closest.empty && allowNonThemed) {
+        return findNonThemedIcon(iconName, searchIconDirs, extensions);
     } else {
         return closest;
     }
@@ -521,17 +530,22 @@ version(iconthemeFileTest) unittest
     found = findClosestIcon("folder", 32, iconThemes, baseDirs, [".xpm"]);
     assert(found == buildPath("test", "Tango", "32x32/places", "folder.xpm"));
 
-    //lookup with fallback
+    //lookup non-themed
     found = findClosestIcon("pidgin", 96, iconThemes, baseDirs);
     assert(found == buildPath("test", "pidgin.png"));
 
-    //lookup without fallback
-    found = findClosestIcon("pidgin", 96, iconThemes, baseDirs, defaultIconExtensions, No.allowFallbackIcon);
+    //don't lookup non-themed
+    found = findClosestIcon("pidgin", 96, iconThemes, baseDirs, defaultIconExtensions, No.allowNonThemed);
     assert(found.empty);
 }
 
+deprecated string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, uint desiredSize, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback)
+{
+    return findClosestIcon!subdirFilter(iconName, desiredSize, iconThemes, searchIconDirs, extensions, cast(Flag!"allowNonThemed")allowFallback);
+}
+
 /**
- * ditto, but with predefined extensions and fallback allowed.
+ * ditto, but with predefined extensions and non-themed icons allowed.
  * See_Also: $(D defaultIconExtensions)
  */
 string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(string iconName, uint size, IconThemes iconThemes, BaseDirs searchIconDirs)
@@ -548,7 +562,7 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(s
  *  extensions = Allowed file extensions.
  * Returns: Icon file path or empty string if not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with larger size. Therefore the icon found in the most preferred theme always has presedence over icons from other themes.
- * See_Also: $(D findLargestIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon)
+ * See_Also: $(D findLargestIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findNonThemedIcon)
  */
 auto findLargestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions)
 {
@@ -611,18 +625,17 @@ auto findLargestThemedIcon(alias subdirFilter = (a => true), IconThemes, BaseDir
  *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
  *  searchIconDirs = Base icon directories.
  *  extensions = Allowed file extensions.
- *  allowFallback = Allow searching for non-themed fallback if could not find icon in themes.
+ *  allowNonThemed = Allow searching for non-themed fallback if could not find icon in themes.
  * Returns: Icon file path or empty string if not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with larger size. Therefore the icon found in the most preferred theme always has presedence over icons from other themes.
- * See_Also: $(D findLargestThemedIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findFallbackIcon)
+ * See_Also: $(D findLargestThemedIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findNonThemedIcon)
  */
-string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback = Yes.allowFallbackIcon)
+string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowNonThemed" allowNonThemed = Yes.allowNonThemed)
 {
-    uint max = 0;
     string largest = findLargestThemedIcon!subdirFilter(iconName, iconThemes, searchIconDirs, extensions).filePath;
 
-    if (largest.empty && allowFallback) {
-        return findFallbackIcon(iconName, searchIconDirs, extensions);
+    if (largest.empty && allowNonThemed) {
+        return findNonThemedIcon(iconName, searchIconDirs, extensions);
     } else {
         return largest;
     }
@@ -651,17 +664,22 @@ version(iconthemeFileTest) unittest
     found = findLargestIcon("desktop", iconThemes, baseDirs, [".svg", ".png"]);
     assert(found == buildPath("test", "Tango", "scalable/places", "desktop.svg"));
 
-    //lookup with fallback
+    //lookup non-themed
     found = findLargestIcon("pidgin", iconThemes, baseDirs);
     assert(found == buildPath("test", "pidgin.png"));
 
-    //lookup without fallback
-    found = findLargestIcon("pidgin", iconThemes, baseDirs, defaultIconExtensions, No.allowFallbackIcon);
+    //don't lookup non-themed
+    found = findLargestIcon("pidgin", iconThemes, baseDirs, defaultIconExtensions, No.allowNonThemed);
     assert(found.empty);
 }
 
+deprecated string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs, Exts)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs, Exts extensions, Flag!"allowFallbackIcon" allowFallback)
+{
+    return findLargestIcon!subdirFilter(iconName, iconThemes, searchIconDirs, extensions, cast(Flag!"allowNonThemed")allowFallback);
+}
+
 /**
- * ditto, but with predefined extensions and fallback allowed.
+ * ditto, but with predefined extensions and non-themed icons allowed.
  * See_Also: $(D defaultIconExtensions)
  */
 string findLargestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(string iconName, IconThemes iconThemes, BaseDirs searchIconDirs)
@@ -829,7 +847,9 @@ private void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, IconThemeFi
  * Params:
  *  iconTheme = Original icon theme to search for its base themes. It's NOT included in the resulting array.
  *  searchIconDirs = Base icon directories to search icon themes.
- *  fallbackThemeName = Name of fallback theme which is loaded the last. Not used if empty. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
+ *  genericThemeName = Name of icon theme which is loaded the last even if it's not specified in inheritance tree.
+ *      Pass empty string to avoid it. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
+ *      Usually you don't need to change this parameter since $(D hicolor) is required to be used by specification.
  *  options = Options for $(D icontheme.file.IconThemeFile) reading.
  * Returns:
  *  Array of unique $(D icontheme.file.IconThemeFile) objects represented base themes.
@@ -838,20 +858,20 @@ private void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, IconThemeFi
  */
 IconThemeFile[] openBaseThemes(Range)(IconThemeFile iconTheme,
                                       Range searchIconDirs,
-                                      string fallbackThemeName = defaultFallbackIconTheme,
+                                      string genericThemeName = defaultGenericIconTheme,
                                       IconThemeFile.IconThemeReadOptions options = IconThemeFile.IconThemeReadOptions.init)
 if(isForwardRange!Range && is(ElementType!Range : string))
 {
     IconThemeFile[] themes;
     openBaseThemesHelper(themes, iconTheme, searchIconDirs, options);
 
-    if (fallbackThemeName.length) {
-        auto fallbackFound = themes.filter!(theme => theme !is null).find!(theme => theme.internalName == fallbackThemeName);
-        if (fallbackFound.empty) {
-            IconThemeFile fallbackTheme;
-            collectException(openIconTheme(fallbackThemeName, searchIconDirs, options), fallbackTheme);
-            if (fallbackTheme) {
-                themes ~= fallbackTheme;
+    if (genericThemeName.length) {
+        auto genericFound = themes.filter!(theme => theme !is null).find!(theme => theme.internalName == genericThemeName);
+        if (genericFound.empty) {
+            IconThemeFile genericTheme;
+            collectException(openIconTheme(genericThemeName, searchIconDirs, options), genericTheme);
+            if (genericTheme) {
+                themes ~= genericTheme;
             }
         }
     }
@@ -879,7 +899,9 @@ version(iconthemeFileTest) unittest
  * Params:
  *  iconTheme = Original icon theme to search for its base themes. Included as first element in the resulting array.
  *  searchIconDirs = Base icon directories to search icon themes.
- *  fallbackThemeName = Name of fallback theme which is loaded the last. Not used if empty. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
+ *  genericThemeName = Name of icon theme which is loaded the last even if it's not specified in inheritance tree.
+ *      Pass empty string to avoid it. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
+ *      Usually you don't need to change this parameter since $(D hicolor) is required to be used by specification.
  *  options = Options for $(D icontheme.file.IconThemeFile) reading.
  * Returns:
  *  Array of unique $(D icontheme.file.IconThemeFile) objects represented the provided icon theme and its base themes.
@@ -888,26 +910,28 @@ version(iconthemeFileTest) unittest
  */
 IconThemeFile[] openThemeFamily(Range)(IconThemeFile iconTheme,
                                       Range searchIconDirs,
-                                      string fallbackThemeName = defaultFallbackIconTheme,
+                                      string genericThemeName = defaultGenericIconTheme,
                                       IconThemeFile.IconThemeReadOptions options = IconThemeFile.IconThemeReadOptions.init)
 if(isForwardRange!Range && is(ElementType!Range : string))
 {
     IconThemeFile[] toReturn;
     toReturn ~= iconTheme;
-    toReturn ~= openBaseThemes(iconTheme, searchIconDirs, fallbackThemeName, options);
+    toReturn ~= openBaseThemes(iconTheme, searchIconDirs, genericThemeName, options);
     return toReturn;
 }
 
-/// ditto, but firstly loads the given icon theme by name.
+/**
+ * ditto, but firstly loads the given icon theme by name. Returns an empty array if theme specified by $(D iconThemeName) could be loaded.
+ */
 IconThemeFile[] openThemeFamily(Range)(string iconThemeName,
                                       Range searchIconDirs,
-                                      string fallbackThemeName = defaultFallbackIconTheme,
+                                      string genericThemeName = defaultGenericIconTheme,
                                       IconThemeFile.IconThemeReadOptions options = IconThemeFile.IconThemeReadOptions.init)
 if(isForwardRange!Range && is(ElementType!Range : string))
 {
     auto iconTheme = openIconTheme(iconThemeName, searchIconDirs, options);
     if (iconTheme) {
-        return openThemeFamily(iconTheme, searchIconDirs, fallbackThemeName, options);
+        return openThemeFamily(iconTheme, searchIconDirs, genericThemeName, options);
     }
     return typeof(return).init;
 }

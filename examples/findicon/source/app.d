@@ -14,7 +14,7 @@ int main(string[] args)
     string[] baseDirs;
     string extensionsStr;
     bool useCache;
-    auto allowFallbackFlag = Yes.allowFallbackIcon;
+    auto allowNonThemed = Yes.allowNonThemed;
     
     try {
         getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
@@ -22,7 +22,7 @@ int main(string[] args)
                "baseDir", "Base icon path to search themes. This option can be repeated to specify multiple paths.", &baseDirs,
                "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr,
                "useCache", "Use icon theme cache when possible", &useCache,
-               "allowFallback", "Allow non-themed fallback icon if could not find in themes", &allowFallbackFlag
+               "allowNonThemed", "Allow non-themed fallback icon if could not find in themes", &allowNonThemed
               );
         
         if (args.length < 2) {
@@ -60,7 +60,7 @@ int main(string[] args)
         if (theme.length) {
             iconThemes = openThemeFamily(theme, searchIconDirs);
         } else {
-            IconThemeFile fallbackTheme = openIconTheme(defaultFallbackIconTheme, searchIconDirs);
+            IconThemeFile fallbackTheme = openIconTheme(defaultGenericIconTheme, searchIconDirs);
             if (fallbackTheme) {
                 iconThemes ~= fallbackTheme;
             }
@@ -78,9 +78,9 @@ int main(string[] args)
         
         string iconPath;
         if (size) {
-            iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions, allowFallbackFlag);
+            iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions, allowNonThemed);
         } else {
-            iconPath = findLargestIcon(iconName, iconThemes, searchIconDirs, extensions, allowFallbackFlag);
+            iconPath = findLargestIcon(iconName, iconThemes, searchIconDirs, extensions, allowNonThemed);
         }
         
         if (iconPath.length) {
