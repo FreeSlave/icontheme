@@ -38,7 +38,7 @@ int main(string[] args)
             return 1;
         }
         
-        string[] extensions = extensionsStr.empty ? [".png", ".xpm"] : extensionsStr.splitter(':').array;
+        string[] extensions = extensionsStr.empty ? defaultIconExtensions : extensionsStr.splitter(':').array;
         
         IconThemeFile[] iconThemes;
         if (theme.length) {
@@ -81,7 +81,7 @@ int main(string[] args)
         
         if (includeNonThemed) {
             writeln("\nNon themed icons:");
-            foreach(path; lookupFallbackIcons(searchIconDirs, extensions)) {
+            foreach(path; lookupNonThemedIcons(searchIconDirs, extensions)) {
                 writeln(path);
             }
         }
