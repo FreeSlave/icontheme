@@ -14,16 +14,16 @@ int main(string[] args)
     string theme;
     string[] baseDirs;
     string extensionsStr;
-    
+
     try {
-        getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
+        getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme,
               "baseDir", "Base icon path to search themes. This option can be repeated to specify multiple paths.", &baseDirs,
               "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr,
               "include-hicolor", "Whether to include hicolor theme in results or not. By default false.", &includeHicolor,
               "include-nonthemed", "Whether to print icons out of themes or not. By default false.", &includeNonThemed,
               "include-base", "Whether to include base themes or not. By default false.", &includeBase
               );
-        
+
         string[] searchIconDirs;
         if (baseDirs.empty) {
             version(OSX) {} else version(Posix) {
@@ -37,15 +37,15 @@ int main(string[] args)
             stderr.writefln("Usage: %s [DIRECTORY]...", args[0]);
             return 1;
         }
-        
+
         string[] extensions = extensionsStr.empty ? defaultIconExtensions : extensionsStr.splitter(':').array;
-        
+
         IconThemeFile[] iconThemes;
         if (theme.length) {
             IconThemeFile iconTheme = openIconTheme(theme, searchIconDirs);
             if (iconTheme) {
                 iconThemes ~= iconTheme;
-                
+
                 if(includeBase) {
                     string fallbackThemeName = includeHicolor ? "hicolor" : string.init;
                     iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, fallbackThemeName);
@@ -59,14 +59,14 @@ int main(string[] args)
                 }
             }
         }
-        
+
         IconSearchResult!(IconThemeFile)[][string][string] results;
-        
+
         foreach(item; lookupThemeIcons(iconThemes, searchIconDirs, extensions)) {
             string iconName = item.filePath.baseName.stripExtension;
             results[iconName][item.iconTheme.displayName] ~= item;
         }
-        
+
         writefln("%s different icon names found", results.length);
         foreach(iconName, iconResult; results) {
             writefln("%s: ", iconName);
@@ -78,14 +78,14 @@ int main(string[] args)
             }
             writeln();
         }
-        
+
         if (includeNonThemed) {
             writeln("\nNon themed icons:");
             foreach(path; lookupNonThemedIcons(searchIconDirs, extensions)) {
                 writeln(path);
             }
         }
-        
+
     } catch(Exception e) {
         stderr.writeln(e.msg);
         return 1;

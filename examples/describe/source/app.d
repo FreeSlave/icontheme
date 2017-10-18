@@ -12,12 +12,12 @@ int main(string[] args)
         writeln("Usage: %s <icontheme>", args[0]);
         return 0;
     }
-    
+
     string themePath = args[1];
-    
+
     try {
         IconThemeFile iconTheme;
-        
+
         if (themePath.isAbsolute() && themePath.exists) {
             if (themePath.isDir) {
                 themePath = buildPath(themePath, "index.theme");
@@ -30,9 +30,9 @@ int main(string[] args)
             if (!iconTheme) {
                 throw new Exception("Could not find theme");
             }
-            
+
         }
-        
+
         writeln("Path: ", iconTheme.fileName);
         writeln("Internal name: ", iconTheme.internalName);
         writeln("Name: ", iconTheme.displayName);
@@ -46,6 +46,6 @@ int main(string[] args)
         stderr.writefln("Error occured: %s", e.msg);
         return 1;
     }
-    
+
     return 0;
 }

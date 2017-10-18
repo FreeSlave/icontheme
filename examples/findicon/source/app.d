@@ -15,23 +15,23 @@ int main(string[] args)
     string extensionsStr;
     bool useCache;
     auto allowNonThemed = Yes.allowNonThemed;
-    
+
     try {
-        getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme, 
+        getopt(args, "theme", "Icon theme to search icon in. If not set it tries to find fallback.", &theme,
                "size", "Preferred size of icon. If not set it will look for biggest icon.", &size,
                "baseDir", "Base icon path to search themes. This option can be repeated to specify multiple paths.", &baseDirs,
                "extensions", "Possible icon files extensions to search separated by ':'. By default .png and .xpm will be used.", &extensionsStr,
                "useCache", "Use icon theme cache when possible", &useCache,
                "allowNonThemed", "Allow non-themed fallback icon if could not find in themes", &allowNonThemed
               );
-        
+
         if (args.length < 2) {
             throw new Exception("Icon is not set");
         }
-        
-        
+
+
         string iconName = args[1];
-        
+
         string[] searchIconDirs;
         if (baseDirs.empty) {
             static if (isFreedesktop) {
@@ -45,13 +45,13 @@ int main(string[] args)
             stderr.writefln("Usage: %s [DIRECTORY]...", args[0]);
             return 1;
         }
-        
+
         string[] extensions = extensionsStr.empty ? [".png", ".xpm"] : extensionsStr.splitter(':').array;
-        
-        
+
+
         debug writefln("Using directories: %-(%s, %)", searchIconDirs);
         debug writeln("Using extensions: ", extensions);
-        
+
         IconThemeFile[] iconThemes;
         if (!theme.length) {
             theme = currentIconThemeName();
@@ -65,9 +65,9 @@ int main(string[] args)
                 iconThemes ~= fallbackTheme;
             }
         }
-        
+
         debug writeln("Using icon theme files: ", iconThemes.map!(iconTheme => iconTheme.fileName()));
-        
+
         if (useCache) {
             foreach(iconTheme; iconThemes) {
                 if (iconTheme.tryLoadCache()) {
@@ -75,14 +75,14 @@ int main(string[] args)
                 }
             }
         }
-        
+
         string iconPath;
         if (size) {
             iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions, allowNonThemed);
         } else {
             iconPath = findLargestIcon(iconName, iconThemes, searchIconDirs, extensions, allowNonThemed);
         }
-        
+
         if (iconPath.length) {
             writeln(iconPath);
         } else {
