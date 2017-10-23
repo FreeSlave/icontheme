@@ -51,9 +51,9 @@ struct IconSubDir
     }
 
     @safe this(const(IniLikeGroup) group) nothrow {
-        collectException(group.value("Size").to!uint, _size);
-        collectException(group.value("MinSize").to!uint, _minSize);
-        collectException(group.value("MaxSize").to!uint, _maxSize);
+        collectException(group.escapedValue("Size").to!uint, _size);
+        collectException(group.escapedValue("MinSize").to!uint, _minSize);
+        collectException(group.escapedValue("MaxSize").to!uint, _maxSize);
 
         if (_minSize == 0) {
             _minSize = _size;
@@ -63,14 +63,14 @@ struct IconSubDir
             _maxSize = _size;
         }
 
-        collectException(group.value("Threshold").to!uint, _threshold);
+        collectException(group.escapedValue("Threshold").to!uint, _threshold);
         if (_threshold == 0) {
             _threshold = 2;
         }
 
         _type = Type.Threshold;
 
-        string t = group.value("Type");
+        string t = group.escapedValue("Type");
         if (t.length) {
             if (t == "Fixed") {
                 _type = Type.Fixed;
@@ -79,7 +79,7 @@ struct IconSubDir
             }
         }
 
-        _context = group.value("Context");
+        _context = group.escapedValue("Context");
         _name = group.groupName();
     }
 
@@ -171,18 +171,18 @@ final class IconThemeGroup : IniLikeGroup
      * See_Also: $(D IconThemeFile.internalName), $(D localizedDisplayName)
      */
     @safe string displayName() const nothrow pure {
-        return readEntry("Name");
+        return unescapedValue("Name");
     }
     /**
      * Set "Name" to name escaping the value if needed.
      */
     @safe string displayName(string name) {
-        return writeEntry("Name", name);
+        return setUnescapedValue("Name", name);
     }
 
     ///Returns: Localized name of icon theme.
     @safe string localizedDisplayName(string locale) const nothrow pure {
-        return readEntry("Name", locale);
+        return unescapedValue("Name", locale);
     }
 
     /**
@@ -190,30 +190,30 @@ final class IconThemeGroup : IniLikeGroup
      * Returns: The value associated with "Comment" key.
      */
     @safe string comment() const nothrow pure {
-        return readEntry("Comment");
+        return unescapedValue("Comment");
     }
     /**
      * Set "Comment" to commentary escaping the value if needed.
      */
     @safe string comment(string commentary) {
-        return writeEntry("Comment", commentary);
+        return setUnescapedValue("Comment", commentary);
     }
 
     ///Returns: Localized comment.
     @safe string localizedComment(string locale) const nothrow pure {
-        return readEntry("Comment", locale);
+        return unescapedValue("Comment", locale);
     }
 
     /**
      * Whether to hide the theme in a theme selection user interface.
-     * Returns: The value associated with "Hidden" key converted to bool using isTrue.
+     * Returns: The value associated with "Hidden" key converted to bool using $(D inilike.common.isTrue).
      */
     @nogc @safe bool hidden() const nothrow pure {
-        return isTrue(value("Hidden"));
+        return isTrue(escapedValue("Hidden"));
     }
     ///setter
     @safe bool hidden(bool hide) {
-        this["Hidden"] = boolToString(hide);
+        setEscapedValue("Hidden", boolToString(hide));
         return hide;
     }
 
@@ -222,13 +222,13 @@ final class IconThemeGroup : IniLikeGroup
      * Returns: The value associated with "Example" key.
      */
     @safe string example() const nothrow pure {
-        return readEntry("Example");
+        return unescapedValue("Example");
     }
     /**
      * Set "Example" to example escaping the value if needed.
      */
     @safe string example(string example) {
-        return writeEntry("Example", example);
+        return setUnescapedValue("Example", example);
     }
 
     /**
@@ -236,11 +236,11 @@ final class IconThemeGroup : IniLikeGroup
      * Returns: The range of values associated with "Directories" key.
      */
     @safe auto directories() const {
-        return IconThemeFile.splitValues(readEntry("Directories"));
+        return IconThemeFile.splitValues(unescapedValue("Directories"));
     }
     ///setter
     string directories(Range)(Range values) if (isInputRange!Range && isSomeString!(ElementType!Range)) {
-        return writeEntry("Directories", IconThemeFile.joinValues(values));
+        return setUnescapedValue("Directories", IconThemeFile.joinValues(values));
     }
 
     /**
@@ -249,11 +249,11 @@ final class IconThemeGroup : IniLikeGroup
      * Note: It does NOT automatically adds hicolor theme if it's missing.
      */
     @safe auto inherits() const {
-        return IconThemeFile.splitValues(readEntry("Inherits"));
+        return IconThemeFile.splitValues(unescapedValue("Inherits"));
     }
     ///setter
     string inherits(Range)(Range values) if (isInputRange!Range && isSomeString!(ElementType!Range)) {
-        return writeEntry("Inherits", IconThemeFile.joinValues(values));
+        return setUnescapedValue("Inherits", IconThemeFile.joinValues(values));
     }
 
 protected:
@@ -366,7 +366,7 @@ $=StrangeKey`;
 
         iconTheme = new IconThemeFile(iniLikeStringReader(contents), IconThemeReadOptions(UnknownGroupPolicy.preserve, IniLikeGroup.InvalidKeyPolicy.save));
         assert(iconTheme.group("/invalid group") !is null);
-        assert(iconTheme.group("/invalid group").value("$") == "StrangeKey");
+        assert(iconTheme.group("/invalid group").escapedValue("$") == "StrangeKey");
 
     contents =
 `[X-SomeGroup]

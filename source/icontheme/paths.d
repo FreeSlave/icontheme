@@ -177,7 +177,7 @@ static if (isFreedesktop) {
                     auto f = new IniLikeFile(gtkConfig, IniLikeFile.ReadOptions(No.preserveComments));
                     auto settings = f.group("Settings");
                     if (settings)
-                        return settings.readEntry("gtk-icon-theme-name");
+                        return settings.unescapedValue("gtk-icon-theme-name");
                 } catch(Exception e) {
                     continue;
                 }
@@ -214,7 +214,7 @@ static if (isFreedesktop) {
                     auto config = new IniLikeFile(kdeConfigPath);
                     auto icons = config.group("Icons");
                     if (icons) {
-                        auto theme = icons.readEntry("Theme");
+                        auto theme = icons.unescapedValue("Theme");
                         if (theme.length && baseName(theme) == theme) {
                             return theme;
                         }

@@ -1,8 +1,8 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"isfreedesktop": "0.1.0",
-		"inilike": "1.0.0",
-		"xdgpaths": "0.2.2"
+		"inilike": "1.1.0",
+		"isfreedesktop": "0.1.1",
+		"xdgpaths": "0.2.4"
 	}
 }
