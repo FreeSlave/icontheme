@@ -113,6 +113,28 @@ static if (isFreedesktop) {
         return currentDesktop;
     }
 
+    private string getIniLikeValue(string fileName, string groupName, string key)
+    {
+        import inilike.read;
+        auto onLeadingComment = delegate void(string line) {};
+        auto onGroup = delegate ActionOnGroup(string currentGroupName) {
+            if (groupName == currentGroupName) {
+                return ActionOnGroup.stopAfter;
+            } else {
+                return ActionOnGroup.skip;
+            }
+        };
+        string foundValue = null;
+        auto onKeyValue = delegate void(string currentKey, string value, string currentGroupName) {
+            if (foundValue is null && groupName == currentGroupName && key == currentKey) {
+                foundValue = value;
+            }
+        };
+        auto onCommentInGroup = delegate void(string line, string groupName) {};
+        readIniLike(iniLikeFileReader(fileName), onLeadingComment, onGroup, onKeyValue, onCommentInGroup, fileName);
+        return foundValue;
+    }
+
     /**
     * Try to detect the current icon name configured by user.
     *
@@ -170,14 +192,15 @@ static if (isFreedesktop) {
         }
         @trusted static string gtk3IconThemeName()
         {
-            import inilike.file;
+            import inilike.read;
+            import inilike.common;
             auto gtkConfigs = [xdgConfigHome("gtk-3.0/settings.ini"), "/etc/gtk-3.0/settings.ini"];
             foreach(gtkConfig; gtkConfigs) {
                 try {
-                    auto f = new IniLikeFile(gtkConfig, IniLikeFile.ReadOptions(No.preserveComments));
-                    auto settings = f.group("Settings");
-                    if (settings)
-                        return settings.unescapedValue("gtk-icon-theme-name");
+                    string iconThemeName = getIniLikeValue(gtkConfig, "Settings", "gtk-icon-theme-name").unescapeValue();
+                    if (iconThemeName.length && baseName(iconThemeName) == iconThemeName) {
+                        return iconThemeName;
+                    }
                 } catch(Exception e) {
                     continue;
                 }
@@ -186,7 +209,8 @@ static if (isFreedesktop) {
         }
         @trusted static string kdeIconThemeName()
         {
-            import inilike.file;
+            import inilike.read;
+            import inilike.common;
             import std.conv : to;
             ubyte kdeVersion;
             auto kdeException = collectException(environment.get("KDE_SESSION_VERSION").to!ubyte, kdeVersion);
@@ -211,13 +235,9 @@ static if (isFreedesktop) {
             foreach(kdeConfigPath; kdeConfigPaths) {
                 try {
                     import std.file :exists;
-                    auto config = new IniLikeFile(kdeConfigPath);
-                    auto icons = config.group("Icons");
-                    if (icons) {
-                        auto theme = icons.unescapedValue("Theme");
-                        if (theme.length && baseName(theme) == theme) {
-                            return theme;
-                        }
+                    string iconThemeName = getIniLikeValue(kdeConfigPath, "Icons", "Theme").unescapeValue();
+                    if (iconThemeName.length && baseName(iconThemeName) == iconThemeName) {
+                        return iconThemeName;
                     }
                 } catch(Exception e) {
                     continue;
