@@ -98,58 +98,58 @@ catch(IniLikeException e) { // Parsing error - found icon theme file is invalid 
     
 ## Examples
 
-### [Describe icon theme](examples/describe/source/app.d)
+### [Describe icon theme](examples/describe.d)
 
 Prints the basic information about theme to stdout.
 
-    dub run :describe -- gnome
-    dub run :describe -- oxygen
+    dub examples/describe.d gnome
+    dub examples/describe.d oxygen
 
 You also can pass the absolute path to file:
 
-    dub run :describe -- /usr/share/icons/gnome/index.theme
+    dub examples/describe.d /usr/share/icons/gnome/index.theme
 
 Or directory:
 
-    dub run :describe -- /usr/share/icons/gnome
+    dub examples/describe.d /usr/share/icons/gnome
 
-### [Icon theme test](examples/test/source/app.d)
+### [Icon theme test](examples/test.d)
 
 Parses all found index.theme and icon-theme.cache files in base icon directories. Writes errors (if any) to stderr.
 Use this example to check if the icontheme library can parse all themes and theme caches on your system.
 
-    dub run :test
+    dub examples/test.d
 
 Run to print names of all examined index.theme and icon-theme.cache files to stdout:
 
-    dub run :test -- --verbose
-    
-### [Find icon](examples/findicon/source/app.d)
+    dub examples/test.d --verbose
+
+### [Find icon](examples/findicon.d)
 
 Utility that finds icon by its name.
 By default it tries to detect the current icon theme automatically.
 
-    dub run :findicon -- edit-copy
+    dub examples/findicon.d edit-copy
 
 You can specify another theme:
 
-    dub run :findicon -- --theme=gnome folder
-    dub run :findicon -- --theme=oxygen text-plain
+    dub examples/findicon.d --theme=gnome folder
+    dub examples/findicon.d --theme=oxygen text-plain
 
 And preferred size:
 
-    dub run :findicon -- --theme=gnome --size=32 folder
+    dub examples/findicon.d --theme=gnome --size=32 folder
 
 Allow using cache:
 
-    dub run :findicon -- --theme=gnome edit-copy --useCache
+    dub examples/findicon.d --theme=gnome edit-copy --useCache
 
-### [Print icons](examples/print/source/app.d)
+### [Print icons](examples/print.d)
 
 Search icons in specified theme:
 
-    dub run :print -- --theme=gnome > result.txt
+    dub examples/print.d --theme=gnome > result.txt
 
 Include hicolor theme, base themes and icons that don't belong to any theme:
 
-    dub run :print -- --include-nonthemed --include-hicolor --include-base --theme=Faenza > result.txt
+    dub examples/print.d --include-nonthemed --include-hicolor --include-base --theme=Faenza > result.txt

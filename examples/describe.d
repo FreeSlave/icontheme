@@ -1,3 +1,8 @@
+/+dub.sdl:
+name "describe"
+dependency "icontheme" path="../"
++/
+
 import std.stdio;
 import std.path;
 import std.file;

@@ -11,6 +11,5 @@
     "targetName" : "icontheme",
     "targetPath" : "lib",
     "targetType" : "library",
-    "versions" : ["iconthemeFileTest"],
-    "subPackages" : ["./examples/test", "./examples/findicon", "./examples/describe", "./examples/print"]
+    "versions" : ["iconthemeFileTest"]
 }

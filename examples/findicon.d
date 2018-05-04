@@ -1,3 +1,8 @@
+/+dub.sdl:
+name "findicon"
+dependency "icontheme" path="../"
++/
+
 import std.stdio;
 import std.getopt;
 import std.algorithm;

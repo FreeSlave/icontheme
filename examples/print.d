@@ -1,3 +1,8 @@
+/+dub.sdl:
+name "print"
+dependency "icontheme" path="../"
++/
+
 import std.algorithm;
 import std.array;
 import std.getopt;
