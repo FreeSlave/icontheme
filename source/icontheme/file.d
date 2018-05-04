@@ -26,8 +26,6 @@ package
     import std.string;
     import std.traits;
     import std.typecons;
-
-    static if( __VERSION__ < 2066 ) enum nogc = 1;
 }
 
 import icontheme.cache;

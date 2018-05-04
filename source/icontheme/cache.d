@@ -33,22 +33,6 @@ package {
     import std.traits;
 
     import std.datetime : SysTime;
-
-    static if( __VERSION__ < 2066 ) enum nogc = 1;
-}
-
-private @nogc @trusted void swapByteOrder(T)(ref T t) nothrow pure  {
-
-    static if( __VERSION__ < 2067 ) { //swapEndian was not @nogc
-        ubyte[] bytes = (cast(ubyte*)&t)[0..T.sizeof];
-        for (size_t i=0; i<bytes.length/2; ++i) {
-            ubyte tmp = bytes[i];
-            bytes[i] = bytes[T.sizeof-1-i];
-            bytes[T.sizeof-1-i] = tmp;
-        }
-    } else {
-        t = swapEndian(t);
-    }
 }
 
 /**
@@ -368,7 +352,7 @@ private:
         if (_data.length >= offset + T.sizeof) {
             T value = *(cast(const(T)*)_data[offset..(offset+T.sizeof)].ptr);
             static if (endian == Endian.littleEndian) {
-                swapByteOrder(value);
+                value = swapEndian(value);
             }
             return value;
         } else {
