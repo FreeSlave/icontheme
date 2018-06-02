@@ -107,7 +107,7 @@ static if (isFreedesktop) {
         automatic =  fallback | gtk2 | gtk3 | kde /// Use all known means to detect icon theme name.
     }
 
-    private @trusted string xdgCurrentDesktop() {
+    private @trusted string xdgCurrentDesktop() nothrow {
         string currentDesktop;
         collectException(environment.get("XDG_CURRENT_DESKTOP"), currentDesktop);
         return currentDesktop;
@@ -135,6 +135,17 @@ static if (isFreedesktop) {
         return foundValue;
     }
 
+    private @trusted ubyte getKdeVersion() nothrow
+    {
+        import std.conv : to;
+        ubyte kdeVersion;
+        if (collectException(environment.get("KDE_SESSION_VERSION").to!ubyte, kdeVersion) !is null)
+            return 0;
+        if (kdeVersion < 4)
+            return 0;
+        return kdeVersion;
+    }
+
     /**
     * Try to detect the current icon name configured by user.
     *
@@ -156,7 +167,12 @@ static if (isFreedesktop) {
                 case "XFCE":
                     return "Tango";
                 case "KDE":
-                    return "oxygen"; //TODO: detect KDE version and set breeze if it's KDE5
+                {
+                    if (getKdeVersion() == 5)
+                        return "breeze";
+                    else
+                        return "oxygen";
+                }
                 default:
                     return "Tango";
             }
@@ -211,15 +227,7 @@ static if (isFreedesktop) {
         {
             import inilike.read;
             import inilike.common;
-            import std.conv : to;
-            ubyte kdeVersion;
-            auto kdeException = collectException(environment.get("KDE_SESSION_VERSION").to!ubyte, kdeVersion);
-            if (kdeException) {
-                return null;
-            }
-            if (kdeVersion < 4) {
-                return null;
-            }
+            ubyte kdeVersion = getKdeVersion();
             string[] kdeConfigPaths;
             immutable kdeglobals = "kdeglobals";
             if (kdeVersion >= 5) {
@@ -246,25 +254,20 @@ static if (isFreedesktop) {
             return null;
         }
 
-        try {
-            string themeName;
-            if (xdgCurrentDesktop() == "KDE" && (detector & IconThemeNameDetector.kde)) {
-                collectException(kdeIconThemeName(), themeName);
-            }
-            if (!themeName.length && (detector & IconThemeNameDetector.gtk3)) {
-                collectException(gtk3IconThemeName(), themeName);
-            }
-            if (!themeName.length && (detector & IconThemeNameDetector.gtk2)) {
-                collectException(gtk2IconThemeName(), themeName);
-            }
-            if (!themeName.length && (detector & IconThemeNameDetector.fallback)) {
-                collectException(fallbackIconThemeName(), themeName);
-            }
-            return themeName;
-        } catch(Exception e) {
-
+        string themeName;
+        if (xdgCurrentDesktop() == "KDE" && (detector & IconThemeNameDetector.kde)) {
+            collectException(kdeIconThemeName(), themeName);
         }
-        return null;
+        if (!themeName.length && (detector & IconThemeNameDetector.gtk3)) {
+            collectException(gtk3IconThemeName(), themeName);
+        }
+        if (!themeName.length && (detector & IconThemeNameDetector.gtk2)) {
+            collectException(gtk2IconThemeName(), themeName);
+        }
+        if (!themeName.length && (detector & IconThemeNameDetector.fallback)) {
+            collectException(fallbackIconThemeName(), themeName);
+        }
+        return themeName;
     }
 
     unittest
