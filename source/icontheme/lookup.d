@@ -375,7 +375,7 @@ deprecated alias findFallbackIcon = findNonThemedIcon;
  *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
  *  searchIconDirs = Base icon directories.
  *  extensions = Allowed file extensions.
- * Returns: $(D IconSearchResult) with icon file path and $(D icontheme.file.IconSubDir) and $(D icontheme.file.IconThemeFile) it belongs to. Path will be empty if icon is not found.
+ * Returns: $(D IconSearchResult). filePath will be empty if icon is not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with closer size. Therefore the icon found in the more preferred theme always has presedence over icons from other themes.
  * See_Also: $(D findClosestIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D iconSizeDistance)
  */
@@ -560,7 +560,7 @@ string findClosestIcon(alias subdirFilter = (a => true), IconThemes, BaseDirs)(s
  *  iconThemes = Range of $(D icontheme.file.IconThemeFile) objects.
  *  searchIconDirs = Base icon directories.
  *  extensions = Allowed file extensions.
- * Returns: Icon file path or empty string if not found.
+ * Returns: $(D IconSearchResult). filePath will be empty if icon is not found.
  * Note: If icon of some size was found in the icon theme, this algorithm does not check following themes, even if they contain icons with larger size. Therefore the icon found in the most preferred theme always has presedence over icons from other themes.
  * See_Also: $(D findLargestIcon), $(D icontheme.paths.baseIconDirs), $(D lookupIcon), $(D findNonThemedIcon)
  */

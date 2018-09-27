@@ -14,7 +14,7 @@
  * See_Also:
  *  $(LINK2 https://github.com/GNOME/gtk/blob/master/gtk/gtkiconcachevalidator.c, GTK icon cache validator source code)
  * Note:
- *  I could not find any specification on icon theme cache, so I merely use gtk source code as reference to reimplement parsing of icon-theme.cache files.
+ *  It seems to be no any specification on icon theme cache, so this module is written using gtk source code as reference to reimplement parsing of icon-theme.cache files.
  */
 
 
@@ -63,7 +63,7 @@ final class IconThemeCache
     /**
      * Read icon theme cache from memory mapped file and validate it.
      * Throws:
-     *  $(B FileException) if could mmap file.
+     *  $(B FileException) if could not mmap file.
      *  $(D IconThemeCacheException) if icon theme file is invalid.
      */
     @trusted this(string fileName) {
@@ -163,7 +163,7 @@ final class IconThemeCache
     /**
      * Path of cache file.
      */
-    @nogc @safe fileName() const nothrow {
+    @nogc @safe string fileName() const nothrow {
         return _fileName;
     }
 
