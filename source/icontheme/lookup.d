@@ -845,7 +845,7 @@ private void openBaseThemesHelper(Range)(ref IconThemeFile[] themes, IconThemeFi
 /**
  * Recursively find all themes the given theme is inherited from.
  * Params:
- *  iconTheme = Original icon theme to search for its base themes. It's NOT included in the resulting array.
+ *  iconTheme = Original icon theme to search for its base themes. It's NOT included in the resulting array. Must be not null.
  *  searchIconDirs = Base icon directories to search icon themes.
  *  genericThemeName = Name of icon theme which is loaded the last even if it's not specified in inheritance tree.
  *      Pass empty string to avoid it. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
@@ -897,14 +897,14 @@ version(iconthemeFileTest) unittest
 /**
  * Recursively find all themes the given theme is inherited from.
  * Params:
- *  iconTheme = Original icon theme to search for its base themes. Included as first element in the resulting array.
+ *  iconTheme = Original icon theme to search for its base themes. Included as first element in the resulting array. Must be not null.
  *  searchIconDirs = Base icon directories to search icon themes.
  *  genericThemeName = Name of icon theme which is loaded the last even if it's not specified in inheritance tree.
  *      Pass empty string to avoid it. It's NOT loaded twice if some theme in inheritance tree has it as base theme.
  *      Usually you don't need to change this parameter since $(D hicolor) is required to be used by specification.
  *  options = Options for $(D icontheme.file.IconThemeFile) reading.
  * Returns:
- *  Array of unique $(D icontheme.file.IconThemeFile) objects represented the provided icon theme and its base themes.
+ *  Array of unique $(D icontheme.file.IconThemeFile) objects that represent the provided icon theme and its base themes.
  * See_Also:
  *  $(D openBaseThemes)
  */
@@ -921,7 +921,7 @@ if(isForwardRange!Range && is(ElementType!Range : string))
 }
 
 /**
- * ditto, but firstly loads the given icon theme by name. Returns an empty array if theme specified by $(D iconThemeName) could be loaded.
+ * ditto, but firstly loads the given icon theme by name. Returns an empty array if theme specified by $(D iconThemeName) could not be loaded.
  */
 IconThemeFile[] openThemeFamily(Range)(string iconThemeName,
                                       Range searchIconDirs,
