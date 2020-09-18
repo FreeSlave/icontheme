@@ -45,14 +45,14 @@ import icontheme;
 
 try {
     string[] searchIconDirs = baseIconDirs(); // Base directories to search themes and icons
-    
+
     // First read icon theme and all related information.
-    
+
     string themeName = ...; // theme name, e.g. "gnome" for GNOME, "oxygen" for KDE4, etc.
-    
+
     IconThemeFile[] iconThemes;
     IconThemeFile iconTheme = openIconTheme(themeName, searchIconDirs); // Read index.theme file contained description if icon theme.
-    
+
     if (iconTheme) {
         writeln("Name: ", iconTheme.name); // Display name of icon theme.
         writeln("Comment: ", iconTheme.comment); // Extended comment on icon theme.
@@ -60,34 +60,34 @@ try {
         writeln("Subdirectories: ", iconTheme.directories); // Sub directories of icon theme.
         writeln("Inherits: ", iconTheme.inherits()); // Names of themes the main theme inherits from.
         writeln("Example: ", iconTheme.example()); // The name of an icon that should be used as an example of how this theme looks.
-        
+
         iconThemes ~= iconTheme;
         iconThemes ~= openBaseThemes(iconTheme, searchIconDirs); // find and load themes the main theme inherits from.
     } else {
         stderr.writeln("Could not find theme");
     }
-    
+
     foreach(theme; iconThemes) {
         theme.tryLoadCache(); // Use cache on icon lookups.
     }
-    
+
     // Now search for icon by name
-    
+
     // Allowed extensions of image files, in order of preference. Put here extensions that your application supports.
     // Icon Theme Specification requires to support PNG and XPM. SVG support is optional.
     string[] extensions = [".png", ".xpm"];
-    
+
     string iconName = ...; // Some icon name, e.g. "folder" or "edit-copy".
-    
-    
+
+
     // Find largest icon file with such name among given themes and directories.
     string iconPath = findLargestIcon(iconName, iconThemes, searchIconDirs, extensions);
-    
+
     // Or find icon file with size nearest to desired.
-    
+
     size_t size = ...; // Desired icon size.
-    iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions); 
-    
+    iconPath = findClosestIcon(iconName, size, iconThemes, searchIconDirs, extensions);
+
     // ... load icon from iconPath using preferable image library.
 }
 catch(IniLikeException e) { // Parsing error - found icon theme file is invalid or can't be read
@@ -95,7 +95,7 @@ catch(IniLikeException e) { // Parsing error - found icon theme file is invalid 
 }
 
 ```
-    
+
 ## Examples
 
 ### [Describe icon theme](examples/describe.d)
