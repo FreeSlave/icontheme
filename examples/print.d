@@ -52,16 +52,15 @@ int main(string[] args)
                 iconThemes ~= iconTheme;
 
                 if(includeBase) {
-                    string fallbackThemeName = includeHicolor ? "hicolor" : string.init;
-                    iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, fallbackThemeName);
+                    string genericThemeName = includeHicolor ? defaultGenericIconTheme : string.init;
+                    iconThemes ~= openBaseThemes(iconTheme, searchIconDirs, genericThemeName);
                 }
             }
-        } else {
-            if (includeHicolor) {
-                IconThemeFile fallbackTheme = openIconTheme("hicolor", searchIconDirs);
-                if (fallbackTheme) {
-                    iconThemes ~= fallbackTheme;
-                }
+        }
+        if ((theme.length == 0 || iconThemes.length == 0) && includeHicolor) {
+            IconThemeFile genericTheme = openIconTheme(defaultGenericIconTheme, searchIconDirs);
+            if (genericTheme) {
+                iconThemes ~= genericTheme;
             }
         }
 
