@@ -116,7 +116,6 @@ static if (isFreedesktop) {
     private string getIniLikeValue(string fileName, string groupName, string key)
     {
         import inilike.read;
-        auto onLeadingComment = delegate void(string line) {};
         auto onGroup = delegate ActionOnGroup(string currentGroupName) {
             if (groupName == currentGroupName) {
                 return ActionOnGroup.stopAfter;
@@ -130,8 +129,7 @@ static if (isFreedesktop) {
                 foundValue = value;
             }
         };
-        auto onCommentInGroup = delegate void(string line, string groupName) {};
-        readIniLike(iniLikeFileReader(fileName), onLeadingComment, onGroup, onKeyValue, onCommentInGroup, fileName);
+        readIniLike(iniLikeFileReader(fileName), null, onGroup, onKeyValue, null, fileName);
         return foundValue;
     }
 
