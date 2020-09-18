@@ -39,6 +39,15 @@ package {
     return ok;
 }
 
+@trusted InputRange!DirEntry dirEntriesNothrow(string path, SpanMode mode) nothrow
+{
+    try {
+        return inputRangeObject(dirEntries(path, mode));
+    } catch(Exception e) {
+        return inputRangeObject(DirEntry[].init);
+    }
+}
+
 /**
  * Default icon extensions. This array includes .png and .xpm.
  * PNG is recommended format.
@@ -74,13 +83,8 @@ deprecated("use defaultGenericIconTheme") alias defaultFallbackIconTheme = defau
 auto iconThemePaths(Range)(Range searchIconDirs)
 if(is(ElementType!Range : string))
 {
-    return searchIconDirs
-        .filter!(function(dir) {
-            bool ok;
-            collectException(dir.isDir, ok);
-            return ok;
-        }).map!(function(iconDir) {
-            return iconDir.dirEntries(SpanMode.shallow)
+    return searchIconDirs.map!(function(iconDir) {
+            return iconDir.dirEntriesNothrow(SpanMode.shallow)
                 .map!(p => buildPath(p, "index.theme")).cache()
                 .filter!(isFileNothrow);
         }).joiner;
@@ -293,8 +297,8 @@ if (is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs
         iconTheme => iconTheme.bySubdir().filter!(subdirFilter).map!(
             subdir => searchIconDirs.map!(
                 basePath => buildPath(basePath, iconTheme.internalName(), subdir.name)
-            ).filter!(isDirNothrow).map!(
-                subdirPath => subdirPath.dirEntries(SpanMode.shallow).filter!(
+            ).map!(
+                subdirPath => subdirPath.dirEntriesNothrow(SpanMode.shallow).filter!(
                     filePath => filePath.isFileNothrow && extensions.canFind(filePath.extension)
                 ).map!(filePath => IconSearchResult!(ElementType!IconThemes)(filePath, subdir, iconTheme))
             ).joiner
@@ -315,7 +319,7 @@ auto lookupNonThemedIcons(BaseDirs, Exts)(BaseDirs searchIconDirs, Exts extensio
 if (isInputRange!(BaseDirs) && isForwardRange!(Exts) &&
     is(ElementType!BaseDirs : string) && is(ElementType!Exts : string))
 {
-    return searchIconDirs.filter!(isDirNothrow).map!(basePath => basePath.dirEntries(SpanMode.shallow).filter!(
+    return searchIconDirs.map!(basePath => basePath.dirEntriesNothrow(SpanMode.shallow).filter!(
         filePath => filePath.isFileNothrow && extensions.canFind(filePath.extension)
     )).joiner;
 }
