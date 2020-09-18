@@ -103,8 +103,8 @@ version(iconthemeFileTest) unittest
 /**
  * Lookup index.theme files by theme name.
  * Params:
- *  themeName = theme name.
- *  searchIconDirs = base icon directories to search icon themes.
+ *  themeName = Theme name (as the base name of theme subdirectory).
+ *  searchIconDirs = Base icon directories to search icon themes.
  * Returns:
  *  Range of paths to index.theme file corresponding to the given theme.
  * Note:
@@ -124,7 +124,7 @@ if(is(ElementType!Range : string))
  * Returns:
  *  Path to the first found index.theme file or null string if not found.
  * Params:
- *  themeName = Theme name.
+ *  themeName = Theme name (as the base name of theme subdirectory).
  *  searchIconDirs = Base icon directories to search icon themes.
  * Returns:
  *  Path to the first found index.theme file corresponding to the given theme.
@@ -144,8 +144,8 @@ auto findIconTheme(Range)(string themeName, Range searchIconDirs)
  * Find index.theme file for given theme and create instance of $(D icontheme.file.IconThemeFile). The first found file will be used.
  * Returns: $(D icontheme.file.IconThemeFile) object read from the first found index.theme file corresponding to given theme or null if none were found.
  * Params:
- *  themeName = theme name.
- *  searchIconDirs = base icon directories to search icon themes.
+ *  themeName = Theme name (as the base name of theme subdirectory).
+ *  searchIconDirs = Base icon directories to search icon themes.
  *  options = options for $(D icontheme.file.IconThemeFile) reading.
  * Throws:
  *  $(B ErrnoException) if file could not be opened.
@@ -277,8 +277,8 @@ if (isInputRange!(IconThemes) && isForwardRange!(BaseDirs) && isForwardRange!(Ex
  * Use subdirFilter to filter icons by $(D icontheme.file.IconSubDir) thus decreasing the number of searchable items and allocations.
  * Returns: Range of $(D IconSearchResult).
  * Params:
- *  iconThemes = icon themes to search icon in.
- *  searchIconDirs = base icon directories.
+ *  iconThemes = Icon themes to search icon in.
+ *  searchIconDirs = Base icon directories.
  *  extensions = possible file extensions for icon files.
  * Example:
 -------------
@@ -310,8 +310,8 @@ if (is(ElementType!IconThemes : const(IconThemeFile)) && is(ElementType!BaseDirs
  * Iterate over all icons out of icon themes.
  * Returns: Range of found icon file paths.
  * Params:
- *  searchIconDirs = base icon directories.
- *  extensions = possible file extensions for icon files.
+ *  searchIconDirs = Base icon directories.
+ *  extensions = Possible file extensions for icon files.
  * See_Also:
  *  $(D lookupNonThemedIcon), $(D icontheme.paths.baseIconDirs)
  */
@@ -801,8 +801,8 @@ unittest
 /**
  * Find icon closest to the given size among given alternatives.
  * Params:
- *  alternatives = range of $(D IconSearchResult)s, usually returned by $(D lookupIcon).
- *  matchSize = desired size of icon.
+ *  alternatives = Range of $(D IconSearchResult)s, usually returned by $(D lookupIcon).
+ *  matchSize = Desired size of icon.
  */
 string matchBestIcon(Range)(Range alternatives, uint matchSize)
 {
