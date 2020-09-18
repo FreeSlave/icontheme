@@ -155,25 +155,31 @@ static if (isFreedesktop) {
     {
         @trusted static string fallbackIconThemeName()
         {
-            switch(xdgCurrentDesktop()) {
-                case "GNOME":
-                case "X-Cinnamon":
-                case "MATE":
-                    return "gnome";
-                case "LXDE":
-                    return "Adwaita";
-                case "XFCE":
-                    return "Tango";
-                case "KDE":
-                {
-                    if (getKdeVersion() == 5)
-                        return "breeze";
-                    else
-                        return "oxygen";
+            import std.utf : byCodeUnit;
+            foreach(desktop; xdgCurrentDesktop().byCodeUnit.splitter(':'))
+            {
+                switch(desktop.source) {
+                    case "GNOME":
+                    case "X-Cinnamon":
+                    case "Cinnamon":
+                    case "MATE":
+                        return "gnome";
+                    case "LXDE":
+                        return "Adwaita";
+                    case "XFCE":
+                        return "Tango";
+                    case "KDE":
+                    {
+                        if (getKdeVersion() == 5)
+                            return "breeze";
+                        else
+                            return "oxygen";
+                    }
+                    default:
+                        break;
                 }
-                default:
-                    return "Tango";
             }
+            return "Tango";
         }
         @trusted static string gtk2IconThemeName()
         {
@@ -270,6 +276,10 @@ static if (isFreedesktop) {
 
     unittest
     {
+        {
+            auto desktopGuard = EnvGuard("XDG_CURRENT_DESKTOP", "unity:GNOME");
+            assert(currentIconThemeName(IconThemeNameDetector.fallback) == "gnome");
+        }
         auto desktopGuard = EnvGuard("XDG_CURRENT_DESKTOP", "");
         assert(currentIconThemeName(IconThemeNameDetector.fallback).length);
         assert(currentIconThemeName(IconThemeNameDetector.none).length == 0);
