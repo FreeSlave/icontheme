@@ -2,7 +2,7 @@
 
 D library for dealing with icon themes in freedesktop environments.
 
-[![Build Status](https://travis-ci.org/FreeSlave/icontheme.svg?branch=master)](https://travis-ci.org/FreeSlave/icontheme) [![Coverage Status](https://coveralls.io/repos/FreeSlave/icontheme/badge.svg?branch=master&service=github)](https://coveralls.io/github/FreeSlave/icontheme?branch=master)
+[![Build Status](https://github.com/FreeSlave/icontheme/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/FreeSlave/icontheme/actions/workflows/ci.yml) [![Coverage Status](https://coveralls.io/repos/FreeSlave/icontheme/badge.svg?branch=master&service=github)](https://coveralls.io/github/FreeSlave/icontheme?branch=master)
 
 [Online documentation](https://freeslave.github.io/d-freedesktop/docs/icontheme.html)
 
